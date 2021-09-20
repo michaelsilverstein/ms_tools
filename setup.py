@@ -7,7 +7,7 @@ with open('README.md') as fh:
     long_description = fh.read()
 
 setup(
-    name='multiloan',
+    name='ms-tools',
     version=__version__,
     packages=['ms_tools'],
     install_requires=dependencies,
