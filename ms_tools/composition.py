@@ -28,3 +28,14 @@ def dirichletCLR(x, n=100):
     # Compute expected value
     ev = (log_ds - log_ds.mean(1).reshape(-1, 1)).mean(0)
     return ev
+
+def collapse(counts, classification, level):
+    """
+    Collapse `counts` to `level` as provided in `classification`.
+    Requires `counts` and `classification` an indexed by OTU
+    """
+    # Get list of samples
+    samples = counts.columns
+    # Collapse
+    collapsed = counts.join(classification[level]).groupby(level)[samples].sum()
+    return collapsed
