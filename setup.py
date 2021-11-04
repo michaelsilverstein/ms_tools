@@ -1,7 +1,7 @@
 from setuptools import setup
 from ms_tools import __version__
 
-dependencies = ['numpy', 'pandas']
+dependencies = ['numpy', 'pandas', 'scikit_bio']
 
 with open('README.md') as fh:
     long_description = fh.read()
