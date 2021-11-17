@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: ms-tools
+Version: 0.2
+Summary: Functions that I commonly use
+Home-page: UNKNOWN
+Author: michaelsilverstein
+Author-email: michael.silverstein4@gmail.com
+License: MIT
+Description: # ms_tools
+        Package for functions that I commonly use
+        
+        Install with `pip install ms-tools`
+        
+        Use with `import ms_tools`
+Platform: UNKNOWN
+Description-Content-Type: text/markdown
