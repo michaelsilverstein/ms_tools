@@ -1,3 +1,5 @@
+"Data transformation utilities"
+
 import pandas as pd
 
 def pair_md(df: pd.DataFrame, md: pd.DataFrame, sample: str = 'Sample', cols: list = None, wideform: bool = True):

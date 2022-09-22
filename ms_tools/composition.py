@@ -1,3 +1,5 @@
+"Compositional data utilities"
+
 import numpy as np
 from skbio.stats.composition import clr
 
