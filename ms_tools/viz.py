@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 def zebra(ax=None, orient='v', color='gray', alpha=.3, zorder=0, **kwargs):
     """
@@ -76,3 +77,21 @@ def stackedbarplot(data, stack_order=None, palette=None, **barplot_kws):
         d = cumsum_stacked[cumsum_stacked[stack_name].eq(s)]
         sns.barplot(x=sample_name, y='count', hue=stack_name, palette=palette, data=d, **barplot_kws)
     return plt.gca()
+
+def draw_arrow(start, end, ax=None, **kwargs):
+    "Draw arrow from arrays `start` to `end`"
+    # Enforce np.array to allow for vector subtraction
+    start, end = map(np.array, (start, end))
+    # Calcualte change in x and y
+    dx, dy = end - start
+    
+    if not ax:
+        ax = plt.gca()
+    ax.arrow(start[0], start[1], dx, dy, **kwargs)
+    
+def draw_arrow_series(coordinates, **kwargs):
+    "Draw a series of arrows from a 2D array `coordinates`"
+    for i in range(coordinates.shape[0] - 1):
+        start = coordinates[i]
+        end = coordinates[i + 1]
+        draw_arrow(start, end, **kwargs)
