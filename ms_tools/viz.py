@@ -80,20 +80,34 @@ def stackedbarplot(data, stack_order=None, palette=None, **barplot_kws):
         sns.barplot(x=sample_name, y='count', hue=stack_name, palette=palette, data=d, **barplot_kws)
     return plt.gca()
 
-def draw_arrow(start, end, ax=None, **kwargs):
-    "Draw arrow from arrays `start` to `end`"
-    # Enforce np.array to allow for vector subtraction
-    start, end = map(np.array, (start, end))
-    # Calcualte change in x and y
-    dx, dy = end - start
+def draw_arrow(start, end, drawer='annotate', ax=None, **kwargs):
+    """
+    Draw arrow from arrays `start` to `end`
     
+    `drawer` indicates which matplotlib function, 'annotate' or 'arrow', to use when drawing the arrows.
+    |   'annotate' should maintain arrow properties even on axes with different scales (good for mutliple subplots)
+    |   The only advantage that I can find with 'arrow' is that the axis limits will automatically adjust to include the arrow
+    """
+    
+    assert drawer in ['annotate', 'arrow'], '`drawer` must be "annotate" or "arrow"'
+
     if not ax:
         ax = plt.gca()
-    ax.arrow(start[0], start[1], dx, dy, **kwargs)
+
+    if drawer == 'annotate': 
+        ax.annotate('', xytext=start, xy=end, arrowprops={**kwargs})
+
+    if drawer == 'arrow':
+        # Enforce np.array to allow for vector subtraction
+        start, end = map(np.array, (start, end))
+        # Calcualte change in x and y
+        dx, dy = end - start
+
+        ax.arrow(start[0], start[1], dx, dy, **kwargs)
     
-def draw_arrow_series(coordinates, **kwargs):
+def draw_arrow_series(coordinates, drawer='annotate', **kwargs):
     "Draw a series of arrows from a 2D array `coordinates`"
     for i in range(coordinates.shape[0] - 1):
         start = coordinates[i]
         end = coordinates[i + 1]
-        draw_arrow(start, end, **kwargs)
+        draw_arrow(start, end, drawer, **kwargs)
