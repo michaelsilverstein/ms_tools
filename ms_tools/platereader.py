@@ -98,6 +98,6 @@ class Plate:
 
     @property
     def stacked(self):
-        if self.df is not None:
+        if self.df is None:
             self.loadPlateData()
         return self.df.stack().reset_index(name=self.measurement_name)
