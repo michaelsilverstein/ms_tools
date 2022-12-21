@@ -44,6 +44,9 @@ class Plate:
         # Find indices
         self.starting_row_i, self.starting_column_i = None, None
 
+        # Load plate data
+        self._loadPlateData()
+
     def _findIdx(self):
         "Find plate reader table indices within Excel sheet"
         df = self._original_df
@@ -62,7 +65,7 @@ class Plate:
 
         self.starting_row_i, self.starting_column_i = starting_row_i, starting_column_i
 
-    def loadPlateData(self, find_idx=True, read_excel_kwargs={}):
+    def _loadPlateData(self, find_idx=True, read_excel_kwargs={}):
         """
         Load plate reader data from an Excel file.
         | find_idx: Automatically find indices containing plate reader data
@@ -82,7 +85,7 @@ class Plate:
 
         kwargs = dict(header=header, usecols=usecols, nrows=nrows, index_col=index_col)
         kwargs.update(read_excel_kwargs)
-        data = pd.read_excel(self.filepath, **kwargs)
+        data = pd.read_excel(self.filepath, self.sheet_name, **kwargs)
 
         # Label rows and columns
         if self.columns is not None:
@@ -95,6 +98,8 @@ class Plate:
 
         # Save
         self.df = data
+
+    #TODO: adjust for background and dilution
 
     @property
     def stacked(self):
