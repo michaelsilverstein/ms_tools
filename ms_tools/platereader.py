@@ -88,21 +88,21 @@ class Plate:
         data = pd.read_excel(self.filepath, self.sheet_name, **kwargs)
 
         # Label rows and columns
+        data = data.rename_axis(columns=self.column_type)
+        data = data.rename_axis(index=self.row_type)
+        
         if self.columns is not None:
             data.columns = self.columns
-            data = data.rename_axis(columns=self.column_type)
         
         if self.rows is not None:
             data.index = self.rows
-            data = data.rename_axis(index=self.row_type)
+            
 
         # Save
         self.df = data
 
-    #TODO: adjust for background and dilution
-
     @property
     def stacked(self):
         if self.df is None:
-            self.loadPlateData()
+            self._loadPlateData()
         return self.df.stack().reset_index(name=self.measurement_name)
