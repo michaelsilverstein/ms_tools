@@ -25,8 +25,9 @@ class Plate:
         assert sheet_name is not None, '"sheet_name" must be specified'
         self.filepath = filepath
         self.df = None
+        self._original_df = None
         self.sheet_name = sheet_name
-        self._original_df = pd.read_excel(self.filepath, self.sheet_name)
+        self._original_sheet = pd.read_excel(self.filepath, self.sheet_name)
         self.measurement_name = measurement_name
 
         # Setup plate format
@@ -51,7 +52,7 @@ class Plate:
 
     def _findIdx(self):
         "Find plate reader table indices within Excel sheet"
-        df = self._original_df
+        df = self._original_sheet
 
         # Find row where data begins
         data_columns = self._plate_format_data['data_columns']
@@ -101,7 +102,8 @@ class Plate:
             
 
         # Save
-        self.df = data
+        self._original_df = data
+        self.df = data.copy()
 
     def removeWells(self, wells: List[Tuple]):
         """
