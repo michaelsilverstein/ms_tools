@@ -3,6 +3,8 @@ Plate reader utility functions
 """
 
 import pandas as pd
+import numpy as np
+from typing import List, Tuple
 
 
 class Plate:
@@ -100,6 +102,19 @@ class Plate:
 
         # Save
         self.df = data
+
+    def removeWells(self, wells: List[Tuple]):
+        """
+        Remove wells - nullify specified cells in DataFrame
+        | wells: List of well coordinates as tuples, ex: [('A', 1), ('B', 5)]
+        """
+        df = self.df
+        for well_idx in wells:
+            df.loc[well_idx] = np.nan
+
+    def restoreWells(self):
+        "Reload original data (following removeWells())"
+        self.df = self._original_df.copy()
 
     @property
     def stacked(self):
