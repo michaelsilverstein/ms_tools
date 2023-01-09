@@ -118,7 +118,7 @@ class Plate:
         "Reload original data (following removeWells())"
         self.df = self._original_df.copy()
         
-    def wellApply(self, wells: List[Tuple], func: function):
+    def wellApply(self, wells: List[Tuple], func: callable):
         "Apply a function to a selection of wells"
         return func([self.df.loc[well] for well in wells])
 
