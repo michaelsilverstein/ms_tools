@@ -129,7 +129,7 @@ class Plate:
         return self.df.stack().reset_index(name=self.measurement_name)
 
 class CUEexperiment:
-    def __init__(self, pre_biomass: Plate, post_biomass: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List(Tuple)=None, bad_wells_biomass: List(Tuple)=None, bad_wells_microresp: List(Tuple)=None):
+    def __init__(self, pre_biomass: Plate, post_biomass: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, bad_wells_biomass: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
         """
         CUE Experiment containing data pertaining to the specified metric
         | {pre, post}_{biomass, microresp}: Plate objects for pre and post measurements
