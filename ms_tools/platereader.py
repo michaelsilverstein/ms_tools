@@ -29,6 +29,7 @@ class Plate:
         self.sheet_name = sheet_name
         self._original_sheet = pd.read_excel(self.filepath, self.sheet_name)
         self.measurement_name = measurement_name
+        self.removed_wells = []
 
         # Setup plate format
         self._plate_formats = {96: {'data_columns': list(range(1, 13)), 'data_rows': list('ABCDEFGH')}}
@@ -114,9 +115,12 @@ class Plate:
         for well_idx in wells:
             df.loc[well_idx] = np.nan
 
+        self.removed_wells.extend(wells)
+
     def restoreWells(self):
         "Reload original data (following removeWells())"
         self.df = self._original_df.copy()
+        self.removed_wells = []
         
     def wellApply(self, wells: List[Tuple], func: callable):
         "Apply a function to a selection of wells"
