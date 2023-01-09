@@ -134,7 +134,7 @@ class CUEexperiment:
         CUE Experiment containing data pertaining to the specified metric
         | {pre, post}_{biomass, microresp}: Plate objects for pre and post measurements
         | dilution: Dilution factor for biomass OD measurement
-        | control_wells: List of wells that are cell-free controls, ex: [('A', 1), ('B', 2)]. Default is all wells in row G.
+        | control_wells: List of wells that are cell-free controls, ex: [('A', 1), ('B', 2)]. Default is all wells in row H.
         | bad_wells_{biomass, microresp}: Wells to remove from each experiment in the form for `Plate.removeWells()`
         """
         # Check Plate object
@@ -176,8 +176,8 @@ class CUEexperiment:
         
         # Adjust OD based on empty controls
         od_pre, od_post = self.pre_biomass.df, self.post_biomass.df
-        self._od_pre_adjusted = (od_pre - od_pre.mean(1).H) * self.dilution
-        self._od_post_adjusted = (od_post - od_post.mean(1).H) * self.dilution
+        self._od_pre_adjusted = (od_pre - self._pre_od_background) * self.dilution
+        self._od_post_adjusted = (od_post - self._post_od_background) * self.dilution
 
         # Change in OD
         self.delta_od = self._od_post_adjusted - self._od_pre_adjusted
