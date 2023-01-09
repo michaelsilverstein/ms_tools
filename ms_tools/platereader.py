@@ -195,7 +195,7 @@ class CUEexperiment:
     def computeDeltaCO2(self):
         "Compute change in CO2 from pre to post"
         
-        micro_pre, micro_post = self.pre_microresp, self.post_microresp
+        micro_pre, micro_post = self.pre_microresp.df, self.post_microresp.df
         
         # Normalize
         self._micro_background = micro_pre.mean().mean()
