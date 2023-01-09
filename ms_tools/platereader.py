@@ -190,7 +190,7 @@ class CUEexperiment:
 
         # Change in biomass -> C
         # https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100649&ver=8&trm=percent+carbon+e+coli&org=
-        self.delta_biomass_c = self._delta_biomass * .47
+        self.delta_biomass_c = self.delta_biomass * .47
         
     def computeDeltaCO2(self):
         "Compute change in CO2 from pre to post"
