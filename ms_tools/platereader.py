@@ -117,9 +117,116 @@ class Plate:
     def restoreWells(self):
         "Reload original data (following removeWells())"
         self.df = self._original_df.copy()
+        
+    def wellApply(self, wells: List[Tuple], func: function):
+        "Apply a function to a selection of wells"
+        return func([self.df.loc[well] for well in wells])
 
     @property
     def stacked(self):
         if self.df is None:
             self._loadPlateData()
         return self.df.stack().reset_index(name=self.measurement_name)
+
+class CUEexperiment:
+    def __init__(self, pre_biomass: Plate, post_biomass: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List(Tuple)=None, bad_wells_biomass: List(Tuple)=None, bad_wells_microresp: List(Tuple)=None):
+        """
+        CUE Experiment containing data pertaining to the specified metric
+        | {pre, post}_{biomass, microresp}: Plate objects for pre and post measurements
+        | dilution: Dilution factor for biomass OD measurement
+        | control_wells: List of wells that are cell-free controls, ex: [('A', 1), ('B', 2)]. Default is all wells in row G.
+        | bad_wells_{biomass, microresp}: Wells to remove from each experiment in the form for `Plate.removeWells()`
+        """
+        # Check Plate object
+        for plate in pre_biomass, post_biomass, pre_microresp, post_microresp:
+            if not isinstance(plate, Plate):
+                raise TypeError('Must provide "Plate" object.')
+
+        # Control wells. Default to last row (H)
+        if control_wells is None:
+            control_wells = [('H', i) for i in range(1, 13)]
+        self.control_wells = control_wells
+        
+        # Remove bad wells
+        for bad_wells, plates in zip([bad_wells_biomass, bad_wells_microresp], [(pre_biomass, post_biomass), (pre_microresp, post_microresp)]):
+            if bad_wells is not None:
+                for plate in plates:
+                    plate.removeWells(bad_wells)
+        
+        # Save
+        self.pre_biomass = pre_biomass
+        self.post_biomass = post_biomass
+        self.pre_microresp = pre_microresp
+        self.post_microresp = post_microresp
+
+        self._bad_wells_biomass = bad_wells_biomass
+        self._bad_wells_microresp = bad_wells_microresp
+
+        self.dilution = dilution
+        
+        # Compute CUE
+        self.computeCUE()
+            
+    def computeDeltaBiomass(self):
+        "Compute the change in biomass from pre to post"
+        
+        # Compute background OD
+        self._pre_od_background = self.pre_biomass.wellApply(self.control_wells, np.mean)
+        self._post_od_background = self.post_biomass.wellApply(self.control_wells, np.mean)
+        
+        # Adjust OD based on empty controls
+        od_pre, od_post = self.pre_biomass.df, self.post_biomass.df
+        self._od_pre_adjusted = (od_pre - od_pre.mean(1).H) * self.dilution
+        self._od_post_adjusted = (od_post - od_post.mean(1).H) * self.dilution
+
+        # Change in OD
+        self.delta_od = self._od_post_adjusted - self._od_pre_adjusted
+
+        # Change in biomass
+        # https://bionumbers.hms.harvard.edu/bionumber.aspx?s=n&v=3&id=108127
+        vol = 150e-6
+        # in ug
+        self.delta_biomass = .56 * self.delta_od * vol * 1e6
+
+        # Change in biomass -> C
+        # https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100649&ver=8&trm=percent+carbon+e+coli&org=
+        self.delta_biomass_c = self._delta_biomass * .47
+        
+    def computeDeltaCO2(self):
+        "Compute change in CO2 from pre to post"
+        
+        micro_pre, micro_post = self.pre_microresp, self.post_microresp
+        
+        # Normalize
+        self._micro_background = micro_pre.mean().mean()
+        self._micro_normalized = micro_post / micro_pre * self._micro_background
+
+        # % CO2
+        pct_co2 = -.2265 - 1.606/(1 - 6.771 * self._micro_normalized)
+        # Reverse column names (because of how microresp is done, columns are flipped)
+        self.pct_co2 = pct_co2.rename(columns=dict(zip(pct_co2.columns, reversed(pct_co2.columns))))
+
+        # Mass C from Microresp manual
+        
+        # Estimate headspace
+        vol = (1 + .15) - .3
+        temp = 25
+        # ug of C
+        self.mass_co2 = self.pct_co2 * vol * (44/22.4) * (12/44) * (273/(273+temp))
+        
+    def computeCUE(self):
+        "Compute CUE from change in biomass and CO2"
+        
+        if not hasattr(self, 'delta_biomass_c'):
+            self.computeDeltaBiomass()
+        
+        if not hasattr(self, 'mass_co2'):
+            self.computeDeltaCO2()
+        
+        delta_biomass_c, mass_co2 = self.delta_biomass_c, self.mass_co2
+        
+        # Remove negative values
+        for df in delta_biomass_c, mass_co2:
+            df[df.lt(0)] = np.nan
+        
+        self.cue = delta_biomass_c / (delta_biomass_c + mass_co2)
