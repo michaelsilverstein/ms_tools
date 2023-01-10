@@ -12,7 +12,7 @@ class Plate:
     Excel plate reader data for single plate spectrophotometer reading
     """
 
-    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type=None, row_type=None, plate_format=96):
+    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type=None, row_type=None, plate_format=96, find_idx=True):
         """
         filepath: Path to plate reader Excel file
         sheet_name: Name of sheet to reader from `filepath`. Must be specified.
@@ -21,6 +21,7 @@ class Plate:
         rows: Name of rows
         {column, row}_type: The type of data contained in the {columns, rows} (ex. Sample or condition)
         plate_format: Format of plate. Current models: 96
+        find_idx: Automatically find plate reader coordinates in spreadsheet and load it with loadPlateData(). (default: True)
         """
         assert sheet_name is not None, '"sheet_name" must be specified'
         self.filepath = filepath
@@ -45,11 +46,17 @@ class Plate:
         self.column_type = column_type
         self.row_type = row_type
 
-        # Find indices
-        self.starting_row_i, self.starting_column_i = None, None
+        # Plate reader location info
+        self._starting_row_i, self._starting_column_i = None, None
+        self._header = None
+        self._usecols = None
+        self._nrows = None
+        self._index_col = None
+        
 
         # Load plate data
-        self._loadPlateData()
+        if find_idx:
+            self.loadPlateData()
 
     def _findIdx(self):
         "Find plate reader table indices within Excel sheet"
@@ -67,25 +74,28 @@ class Plate:
             self._n_data_rows).pipe(lambda x: x[x]).index
         starting_column_i = list(df.columns).index(starting_column)
 
-        self.starting_row_i, self.starting_column_i = starting_row_i, starting_column_i
+        self._starting_row_i, self._starting_column_i = starting_row_i, starting_column_i
+    
+        # Assign load parameters
+        self._header = self._starting_row_i + 1
+        self._usecols = range(self._starting_column_i,
+                        self._starting_column_i + self._n_data_columns + 1)
+        self._nrows = self._n_data_rows
+        self._index_col = 0
 
-    def _loadPlateData(self, find_idx=True, read_excel_kwargs={}):
+    def loadPlateData(self, find_idx=True, read_excel_kwargs={}):
         """
         Load plate reader data from an Excel file.
         | find_idx: Automatically find indices containing plate reader data
         | read_excel_kwargs: Arguments to pass to pd.read_excel()
         """
-        header = None
-        usecols = None
-        nrows = None
-        index_col = None
         if find_idx:
             self._findIdx()
-            header = self.starting_row_i + 1
-            usecols = range(self.starting_column_i,
-                            self.starting_column_i + self._n_data_columns + 1)
-            nrows = self._n_data_rows
-            index_col = 0
+        
+        header = self._header
+        usecols = self._usecols
+        nrows = self._nrows
+        index_col = self._index_col
 
         kwargs = dict(header=header, usecols=usecols, nrows=nrows, index_col=index_col)
         kwargs.update(read_excel_kwargs)
@@ -129,7 +139,7 @@ class Plate:
     @property
     def stacked(self):
         if self.df is None:
-            self._loadPlateData()
+            self.loadPlateData()
         return self.df.stack().reset_index(name=self.measurement_name)
 
 class CUEexperiment:
