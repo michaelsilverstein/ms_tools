@@ -100,17 +100,16 @@ class Plate:
         kwargs = dict(header=header, usecols=usecols, nrows=nrows, index_col=index_col)
         kwargs.update(read_excel_kwargs)
         data = pd.read_excel(self.filepath, self.sheet_name, **kwargs)
-
-        # Label rows and columns
-        data = data.rename_axis(columns=self.column_type)
-        data = data.rename_axis(index=self.row_type)
         
+        # Label rows and columns
         if self.columns is not None:
             data.columns = self.columns
         
         if self.rows is not None:
             data.index = self.rows
-            
+        
+        # Label rows and column types
+        data = data.rename_axis(columns=self.column_type, index=self.row_type)
 
         # Save
         self._original_df = data
