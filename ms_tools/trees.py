@@ -2,6 +2,9 @@
 
 from skbio.tree import TreeNode
 from skbio.diversity.beta import weighted_unifrac, unweighted_unifrac
+import pandas as pd
+from scipy.spatial.distance import pdist, squareform
+from argparse import ArgumentParser, RawTextHelpFormatter
 
 def setup_unifrac(tree_file, features, weighted=True):
     """
@@ -24,3 +27,9 @@ def setup_unifrac(tree_file, features, weighted=True):
     def unifrac(u, v):
         return fnc(u, v, features, sheared)
     return unifrac
+
+if __name__ == '__main__':
+    parser = ArgumentParser(formatter_class=RawTextHelpFormatter)
+    parser.add_argument('-i', help='Path to OTU count table', required=True, type=str)
+    parser.add_argument('-d', help='Delimiter for OTU table [Default: "\t"]', type=str, default='\t')
+    
