@@ -16,7 +16,7 @@ def loo_score(estimator, X, y, return_predictions=False, **kwargs):
     | All other keyword arguments are passed to `cross_val_predict()`
     """
     loo_y = cross_val_predict(estimator, X, y, cv=LeaveOneOut(), **kwargs)
-    r2 = sps.pearsonr(y, loo_y)[0]
+    r2 = sps.pearsonr(y, loo_y)[0] ** 2
     if return_predictions:
         return_this = r2, loo_y
     else:
