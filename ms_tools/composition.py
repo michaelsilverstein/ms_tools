@@ -3,6 +3,7 @@
 import numpy as np
 from skbio.stats.composition import clr
 from skbio.stats import subsample_counts
+from scipy.spatial.distance import euclidean
 
 def rho(x, y, transform=False):
     """
@@ -65,3 +66,24 @@ def rarefaction_curve(x, step_size=10):
     richnesses = np.array([(subsample_counts(x, step) > 0).sum() for step in steps])
     
     return steps, richnesses
+
+def overlap_aitchison(x, y):
+    """Compute Aitchison distance of overlap between `x` and `y` with metric of choice
+
+    Args:
+        x (array): 
+        y (array): 
+        metric (function, optional): Defaults to Euclidean
+    """
+    x = np.array(x)
+    y = np.array(y)
+    
+    data = np.array([x, y])
+    
+    overlap = (data > 0).all(0)
+    
+    data_overlap_clr = clr(data[:, overlap])
+    
+    dist = euclidean(*data_overlap_clr)
+    
+    return dist
