@@ -2,6 +2,7 @@
 
 import numpy as np
 from skbio.stats.composition import clr
+from skbio.stats import subsample_counts
 
 def rho(x, y, transform=False):
     """
@@ -41,3 +42,23 @@ def collapse(counts, classification, level):
     # Collapse
     collapsed = counts.join(classification[level]).groupby(level)[samples].sum()
     return collapsed
+
+def rarefaction_curve(x, step_size=10):
+    """Perform a rarefaction curve on `x` with the given step size
+
+    Args:
+        x (array): Array of counts
+        step_size (int): Size of each step in depth
+    """
+    x = np.array(x)
+    depth = x.sum()
+    steps = np.arange(step_size, depth, step_size)
+    
+    # Ensure up to depth
+    if steps[-1] != depth:
+        steps = np.append(steps, depth)
+    
+    # Calculate richness at each step size
+    richnesses = [(subsample_counts(x, step) > 0).sum() for step in steps]
+    
+    return richnesses
