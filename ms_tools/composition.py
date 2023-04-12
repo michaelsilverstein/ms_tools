@@ -62,6 +62,6 @@ def rarefaction_curve(x, step_size=10):
         steps = np.append(steps, depth)
     
     # Calculate richness at each step size
-    richnesses = [(subsample_counts(x, step) > 0).sum() for step in steps]
+    richnesses = np.array([(subsample_counts(x, step) > 0).sum() for step in steps])
     
     return steps, richnesses
