@@ -149,7 +149,7 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, line_kwargs={}, fill_between_
         ax = plt.gca()
     
     # LOWESS line
-    smooth_x, smooth_y = lowess(y, x)
+    smooth_x, smooth_y = lowess(y, x).T
     ax.plot(smooth_x, smooth_y, **line_kwargs)
     
     # CI
