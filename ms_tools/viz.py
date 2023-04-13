@@ -113,7 +113,7 @@ def draw_arrow_series(coordinates, drawer='annotate', **kwargs):
         end = coordinates[i + 1]
         draw_arrow(start, end, drawer, **kwargs)
 
-def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, **fill_between_kwargs):
+def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, line_kwargs={}, fill_between_kwargs={}):
     """Visualize confidence interval around LOWESS curve
 
     Args:
@@ -122,9 +122,10 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, **fill_between_kwargs):
         n_iters (int, optional): Number of bootstrap iterations. Defaults to 1000.
         ci (float, optional): Confidence interval size. Defaults to .95.
         ax: matplotlib axis
-        All other keyword arguments are passed to `plt.fill_between()`
+        {line, fill_between}_kwargs: Keyword arguments for the LOWESS line and CI interval
     """
     
+    # Perform Bootstrap
     smooth_ys = []
     for _ in range(n_iters):
         # Choose indices
@@ -147,5 +148,10 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, **fill_between_kwargs):
     if not ax:
         ax = plt.gca()
     
+    # LOWESS line
+    smooth_x, smooth_y = lowess(y, x)
+    ax.plot(smooth_x, smooth_y, **line_kwargs)
+    
+    # CI
     x.sort()
     ax.fill_between(x, lower_bound, upper_bound, **fill_between_kwargs)
