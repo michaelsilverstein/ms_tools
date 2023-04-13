@@ -124,6 +124,8 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, line_kwargs={}, fill_between_
         ax: matplotlib axis
         {line, fill_between}_kwargs: Keyword arguments for the LOWESS line and CI interval
     """
+    # Enforce numpy arrays
+    x, y = map(np.array, (x, y))
     
     # Perform Bootstrap
     smooth_ys = []
