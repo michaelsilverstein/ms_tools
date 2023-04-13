@@ -3,7 +3,7 @@
 import numpy as np
 from skbio.stats.composition import clr
 from skbio.stats import subsample_counts
-from scipy.spatial.distance import euclidean
+from scipy.spatial.distance import euclidean, jensenshannon
 
 def rho(x, y, transform=False):
     """
@@ -87,3 +87,55 @@ def overlap_aitchison(x, y):
     dist = euclidean(*data_overlap_clr)
     
     return dist
+
+def overlap(x, y, relative=False):
+    """Overlap distance as described by Bashin 2016 (10.1038/nature18301)
+    
+    For relative abundance profiles x and y
+    
+    Overlap(x, y) = sum_i (x_i, y_i) / 2, for shared taxa i.
+    
+    Overlap is like Jaccard, but robust to "OTU splitting".
+
+    Args:
+        {x, y}: Count (default) or relative profiles
+        relative: If profiles are counts (default) or relative abundances
+    """
+    x = np.array(x)
+    y = np.array(y)
+    
+    # If counts are provided, compute relative abundances
+    if not relative:
+        x = x / x.sum()
+        y = y / y.sum()
+    
+    data = np.array([x, y])
+    
+    shared_idx = (data > 0).all(0)
+    
+    overlap_dist = data[:, shared_idx].mean(0).sum()
+    
+    return overlap_dist
+
+def dissimilarity(x, y):
+    """Dissimilarity distance as described by Bashin 2016 (10.1038/nature18301)
+    
+    Dissimilarity(x, y) = sqrt(JSD(x*, y*)) are count (or relative abundances)
+    of shared taxa, renormalized to just those shared taxa
+
+    Args:
+        {x, y}: Count (or relative abundance) profiles
+    """
+    x = np.array(x)
+    y = np.array(y)
+    
+    data = np.array([x, y])
+    
+    shared_idx = (data > 0).all(0)
+    
+    shared_data = data[:, shared_idx]
+    shared_normalized = shared_data / shared_data.sum(1).reshape(-1, 1)
+    
+    dissimilarity_dist = np.sqrt(jensenshannon(*shared_normalized))
+    
+    return dissimilarity_dist
