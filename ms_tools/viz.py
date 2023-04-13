@@ -126,6 +126,7 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, line_kwargs={}, fill_between_
     """
     # Enforce numpy arrays
     x, y = map(np.array, (x, y))
+    sorted_x = np.sort(x)
     
     # Perform Bootstrap
     smooth_ys = []
@@ -137,7 +138,7 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, line_kwargs={}, fill_between_
         bootstrap_x, bootstrap_y = x[idx], y[idx]
         
         # Calculate lowess
-        _, smooth_y = lowess(bootstrap_y, bootstrap_x).T
+        smooth_y = lowess(bootstrap_y, bootstrap_x, xvals=sorted_x)
         smooth_ys.append(smooth_y)
     
     # Compute confidence interval over bootstaps
@@ -151,7 +152,7 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, line_kwargs={}, fill_between_
         ax = plt.gca()
         
     # CI
-    ax.fill_between(np.sort(x), lower_bound, upper_bound, **fill_between_kwargs)
+    ax.fill_between(sorted_x, lower_bound, upper_bound, **fill_between_kwargs)
     
     # LOWESS line
     smooth_x, smooth_y = lowess(y, x).T
