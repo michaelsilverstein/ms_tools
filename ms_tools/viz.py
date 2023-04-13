@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from statsmodels.nonparametric.smoothers_lowess import lowess
 
 def zebra(ax=None, orient='v', color='gray', alpha=.3, zorder=0, **kwargs):
     """
@@ -111,3 +112,39 @@ def draw_arrow_series(coordinates, drawer='annotate', **kwargs):
         start = coordinates[i]
         end = coordinates[i + 1]
         draw_arrow(start, end, drawer, **kwargs)
+
+def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, **fill_between_kwargs):
+    """Visualize confidence interval around LOWESS curve
+
+    Args:
+        x (array): x data
+        y (array): y data
+        n_iters (int, optional): Number of bootstrap iterations. Defaults to 1000.
+        ci (float, optional): Confidence interval size. Defaults to .95.
+        ax: matplotlib axis
+        All other keyword arguments are passed to `plt.fill_between()`
+    """
+    
+    smooth_ys = []
+    for _ in range(n_iters):
+        # Choose indices
+        idx = np.random.choice(range(len(x)), len(x))
+        
+        # Sample data
+        bootstrap_x, bootstrap_y = x[idx], y[idx]
+        
+        # Calculate lowess
+        _, smooth_y = lowess(bootstrap_y, bootstrap_x)
+        smooth_ys.append(smooth_y)
+    
+    # Compute confidence interval over bootstaps
+    ci_low = (1 - ci) / 2
+    ci_high = ci + ci_low
+    
+    lower_bound, upper_bound = np.quantile(smooth_ys, (ci_low, ci_high), axis=0)
+    
+    # Plot
+    if not ax:
+        ax = plt.gca()
+        
+    ax.fill_between(x, lower_bound, upper_bound, **fill_between_kwargs)
