@@ -134,7 +134,7 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, **fill_between_kwargs):
         bootstrap_x, bootstrap_y = x[idx], y[idx]
         
         # Calculate lowess
-        _, smooth_y = lowess(bootstrap_y, bootstrap_x)
+        _, smooth_y = lowess(bootstrap_y, bootstrap_x).T
         smooth_ys.append(smooth_y)
     
     # Compute confidence interval over bootstaps
