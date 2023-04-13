@@ -146,5 +146,6 @@ def lowess_ci(x, y, n_iters=1000, ci=.95, ax=None, **fill_between_kwargs):
     # Plot
     if not ax:
         ax = plt.gca()
-        
+    
+    x.sort()
     ax.fill_between(x, lower_bound, upper_bound, **fill_between_kwargs)
