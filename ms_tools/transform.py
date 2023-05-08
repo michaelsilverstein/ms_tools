@@ -22,7 +22,7 @@ def pair_md(df: pd.DataFrame, md: pd.DataFrame, sample: str = 'Sample', cols: li
         df = df.rename_axis(index='sample1', columns='sample2').stack().reset_index(name='distance')
     # Check if 'to' and 'from' are in df
     if any([c not in df for c in ['sample1', 'sample2']]):
-        raise KeyError('`df` must contain the columns "to" and "from"')
+        raise KeyError('`df` must contain the columns "sample1" and "sample2"')
     # Check that sample is in md
     if sample not in md:
         raise KeyError('"%s" must be column in `md`' % sample)
