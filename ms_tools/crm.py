@@ -36,7 +36,7 @@ def TrophicResourceMatrix(resource_class_sizes, transition_matrix, sparsity=.2):
     # Transpose to out X in to match community simulator input
     return D.T
 
-def TrophicConsumerMatrix(consumer_class_sizes, consumer_class_preferences, resource_class_sizes, sparsity=.6):
+def TrophicConsumerMatrix(consumer_class_sizes, consumer_class_preferences, resource_class_sizes, sparsity=None, n=None):
     """
     Generate consumer matrix, c, given resource type preferences for each consumer family
     
@@ -44,7 +44,15 @@ def TrophicConsumerMatrix(consumer_class_sizes, consumer_class_preferences, reso
     | consumer_class_sizes: List of size of each consumer family
     | consumer_class_preferences: Resource preferences of each family
     | sparsity: Controls sparsity of matrix {0, 1}
+    | n: Number of resource preferences for each consumer
+    
+    ** ONLY `sparsity` or `n` can be provided
     """
+    # Check that only sparsity or n has been provided
+    sampling_mode = 'sparsity' if sparsity is not None else 'n'
+    if (sparsity is not None) & (n is not None):
+        raise ValueError('Only `sparsity` or `n` can be provided, not both.')
+    
     # Consumer features
     n_consumers = sum(consumer_class_sizes)
     n_families = len(consumer_class_sizes)
@@ -71,8 +79,19 @@ def TrophicConsumerMatrix(consumer_class_sizes, consumer_class_preferences, reso
         # Mask which points to choose
         consumer_class_mask = [x for p, s in zip(consumer_preferences, resource_class_sizes) for x in [p] * s]
 
-        # Sample preferences from this families preference set and impose sparsity
-        c_class = ((np.random.rand(species_class_size, n_resources) * consumer_class_mask) > sparsity).astype(int)
+        if sampling_mode == 'sparsity':
+            # Sample preferences from this families preference set and impose sparsity
+            c_class = ((np.random.rand(species_class_size, n_resources) * consumer_class_mask) > sparsity).astype(int)
+        
+        else:
+            # Get indices of class
+            class_idx = np.where(consumer_class_mask)[0]
+            # Sample idxs
+            c_class_idx = c_class_idx = np.array([np.random.choice(class_idx, n, replace=False) for _ in range(species_class_size)])
+            c_class = np.zeros((species_class_size, n_resources))
+            for s, idx in zip(c_class, c_class_idx):
+                s[idx] = 1
+            
         # Add to C matrix
         c.loc[family] = c_class
     
