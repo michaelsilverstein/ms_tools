@@ -155,11 +155,6 @@ class CUEexperiment:
             if not isinstance(plate, Plate):
                 raise TypeError('Must provide "Plate" object.')
 
-        # Control wells. Default to last row (H)
-        if control_wells is None:
-            control_wells = [('H', i) for i in range(1, 13)]
-        self.control_wells = control_wells
-        
         # Remove bad wells
         for bad_wells, plates in zip([bad_wells_biomass, bad_wells_microresp], [(pre_biomass, post_biomass), (pre_microresp, post_microresp)]):
             if bad_wells is not None:
@@ -167,31 +162,43 @@ class CUEexperiment:
                     plate.removeWells(bad_wells)
         
         # Save
+        self.control_wells = control_wells
         self.pre_biomass = pre_biomass
         self.post_biomass = post_biomass
         self.pre_microresp = pre_microresp
         self.post_microresp = post_microresp
-
         self._bad_wells_biomass = bad_wells_biomass
         self._bad_wells_microresp = bad_wells_microresp
 
         self.dilution = dilution
         
+        # Adjust OD
+        self._adjustOD()
+        
         # Compute CUE
         self.computeCUE()
-            
-    def computeDeltaBiomass(self):
-        "Compute the change in biomass from pre to post"
-        
+    
+    def _adjustOD(self):
+        """Given control wells and dilution, adjust OD"""
         # Compute background OD
-        self._pre_od_background = self.pre_biomass.wellApply(self.control_wells, np.mean)
-        self._post_od_background = self.post_biomass.wellApply(self.control_wells, np.mean)
+        self._pre_od_background = 0
+        self._post_od_background = 0
+        if self.control_wells is not None:
+            self._pre_od_background = self.pre_biomass.wellApply(self.control_wells, np.mean)
+            self._post_od_background = self.post_biomass.wellApply(self.control_wells, np.mean)
         
         # Adjust OD based on empty controls
         od_pre, od_post = self.pre_biomass.df, self.post_biomass.df
         self._od_pre_adjusted = (od_pre - self._pre_od_background) * self.dilution
         self._od_post_adjusted = (od_post - self._post_od_background) * self.dilution
+        
+    def computeGrowthRate(self):
+        "Compute growth rate (Smith et al. 2021, Ecology Letters)"
+        pass
 
+            
+    def computeDeltaBiomass(self):
+        "Compute the change in biomass from pre to post"
         # Change in OD
         self.delta_od = self._od_post_adjusted - self._od_pre_adjusted
 
