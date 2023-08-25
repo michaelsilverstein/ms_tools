@@ -165,7 +165,7 @@ class Plate:
         return self.df.__repr__()
 
 class CUEexperiment:
-    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, time: float, culture_volume: float=500, deepwell_volume: float=2000, control_wells: List[Tuple]=None, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
+    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, time: float, control_wells: List[Tuple]=None, culture_volume: float=500, deepwell_volume: float=2000, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
         """
         CUE Experiment containing data pertaining to the specified metric
         | {pre, post}_{od, microresp}: Plate objects for pre and post measurements
@@ -288,6 +288,8 @@ class CUEexperiment:
 
         self.cue = self.growth_rate / (self.growth_rate + self.respiration_rate)
         
+    def __repr__(self) -> str:
+        return self.cue.__repr__()
 
     # def computeDeltaBiomass(self):
     #     "Compute the change in biomass from pre to post"
