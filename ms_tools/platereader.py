@@ -143,7 +143,7 @@ class Plate:
         df = self.df
         for well_idx in wells:
             df.at[well_idx] = np.nan
-            
+
         self.removed_wells.extend(wells)
 
     def restoreWells(self):
@@ -160,6 +160,9 @@ class Plate:
         if self.df is None:
             self.loadPlateData()
         return self.df.stack().reset_index(name=self.measurement_name)
+
+    def __repr__(self) -> str:
+        return self.df.__repr__()
 
 class CUEexperiment:
     def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, time: float, culture_volume: float=500, deepwell_volume: float=2000, control_wells: List[Tuple]=None, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
