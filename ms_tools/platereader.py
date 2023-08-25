@@ -165,12 +165,11 @@ class Plate:
         return self.df.__repr__()
 
 class CUEexperiment:
-    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, time: float, control_wells: List[Tuple]=None, culture_volume: float=500, deepwell_volume: float=2000, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
+    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=500, deepwell_volume: float=2000, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
         """
         CUE Experiment containing data pertaining to the specified metric
         | {pre, post}_{od, microresp}: Plate objects for pre and post measurements
         | dilution: Dilution factor for biomass OD measurement
-        | time: The duration of the experiment
         | culture_volume: The volume (uL) of culture in each MicroResp well. (Default: 500uL)
         | deepwell_volume: The volume (uL) of each well in the deepwell plate
         | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default is all wells in row H.
@@ -191,10 +190,18 @@ class CUEexperiment:
         
         Where R_tot is the total respiration measured (MicroResp) over the duration of the experiment.
 
-        And finally,
+        And CUE:
                                      u
                             CUE = -------
                                    u + R
+
+        I've simplified this equation to (time-independent, assuming measurements are made over the same time):
+
+                                        1
+                            CUE = ------------
+                                   1 +  R_tot
+                                       -------
+                                       C1 - C0
         """
         # Check Plate object
         for plate in pre_od, post_od, pre_microresp, post_microresp:
@@ -203,7 +210,6 @@ class CUEexperiment:
         
         # Save
         self._dilution = dilution
-        self._time = time
         self._culture_volume = culture_volume
         self._deepwell_volume = deepwell_volume
         self._assumed_background_od = 0.04
@@ -279,14 +285,12 @@ class CUEexperiment:
         self._respirationC = self._pct_co2 / 100 * self._headspace * (44 / 22.4) * (12 / 44) * (273 / (273 + self._temp))
         
     def _computeCUE(self):
-        "Compute CUE according to Smith et al. 2021, Ecology Letters"
-        # Growth rate
-        self.growth_rate = np.log(self._post_biomassC / self._pre_biomassC) / self._time
+        """
+        Compute CUE according to my time-independent re-arrangement of Smith et al. 2021, Ecology Letters
 
-        # Respiration rate
-        self.respiration_rate = (self.growth_rate * self._respirationC) / (self._pre_biomassC * (np.exp(self.growth_rate * self._time) - 1))
-
-        self.cue = self.growth_rate / (self.growth_rate + self.respiration_rate)
+        CUE = 1 / 1 + Rtot/(C1 - C0)
+        """
+        self.cue = 1 / 1 + self._respirationC / (self._post_biomassC - self._pre_biomassC)
         
     def __repr__(self) -> str:
         return self.cue.__repr__()
