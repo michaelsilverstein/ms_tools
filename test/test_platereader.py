@@ -58,7 +58,7 @@ class testCUEexperiment(TestCase):
         od_path = 'test/test_data/DE.Transfer1.xlsx'
         self.pre_od_plate, self.post_od_plate = [Plate(od_path, sheet) for sheet in [0, 1]]
         self.pre_microresp_plate, self.post_microresp_plate = [Plate(microresp_path, sheet) for sheet in [0, 1]]
-        self.cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, 5)
+        self.cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
         
     def test_backgroundOD(self):
         self.assertEqual(self.cue._assumed_background_od, self.cue._pre_od_background)
@@ -66,7 +66,7 @@ class testCUEexperiment(TestCase):
         
         control_wells = [('H', i) for i in range(1, 13)]
         
-        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, 5, control_wells=control_wells)
+        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, control_wells=control_wells)
         self.assertAlmostEquals(0.09358333333333334, cue._pre_od_background)
         self.assertAlmostEquals(0.09641666666666666, cue._post_od_background)
     
@@ -74,7 +74,7 @@ class testCUEexperiment(TestCase):
         od_bad_wells = [('A', 1), ('A', 2)]
         microresp_bad_wells = [('B', 1), ('B', 2)]
 
-        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, 5, bad_wells_od=od_bad_wells, bad_wells_microresp=microresp_bad_wells)
+        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, bad_wells_od=od_bad_wells, bad_wells_microresp=microresp_bad_wells)
 
         self.assertCountEqual(cue._pre_od.removed_wells, od_bad_wells)
         self.assertCountEqual(cue._post_od.removed_wells, od_bad_wells)
