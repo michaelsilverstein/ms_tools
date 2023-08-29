@@ -86,3 +86,59 @@ class testCUEexperiment(TestCase):
 
         self.assertCountEqual(cue._pre_microresp.removed_wells, microresp_bad_wells)
         self.assertCountEqual(cue._post_microresp.removed_wells, microresp_bad_wells)
+        
+    def test_negative_delta_biomass(self):
+        # Without control wells
+        cue_without_control_wells = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
+        expected_negative_biomass_wells_without_control = [('A', 2), ('C', 10), ('D', 8), ('D', 10), ('E', 2), ('E', 3), ('F', 7), ('H', 5)]
+        self.assertCountEqual(expected_negative_biomass_wells_without_control, cue_without_control_wells._negative_delta_biomass_wells)
+        
+        
+        # With control wells
+        control_wells = [('H', i) for i in range(1, 13)]
+        cue_with_control_wells = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, control_wells)
+        expected_negative_biomass_wells_with_control = [('A', 2), ('C', 2), ('C', 10), ('D', 8), ('D', 10), ('E', 2), ('E', 3), ('F', 7), ('F', 11), ('G', 2)]
+        self.assertCountEqual(expected_negative_biomass_wells_with_control, cue_with_control_wells._negative_delta_biomass_wells)
+        
+        self.assertTrue(all([np.isnan(cue_with_control_wells.delta_biomassC.at[i]) for i in cue_with_control_wells._negative_delta_biomass_wells]))
+
+        # Underscored delta should keep actual delta (no nulls)
+        self.assertFalse(cue_with_control_wells._delta_biomassC.isnull().any().any())
+        
+    def test_negative_microresp(self):
+        # All CUE values as expected with original data
+        cue_unedited = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
+        self.assertEquals([], cue_unedited._negative_delta_microresp_wells)
+
+        # Put unexpected relationship
+        post_microresp_edited = self.post_microresp_plate
+        well_to_edit = ('A', 1)
+        post_microresp_edited.df.at[well_to_edit] = self.pre_microresp_plate.df.at[well_to_edit] + .1
+        cue_edited = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
+        
+        self.assertCountEqual([well_to_edit], cue_edited._negative_delta_microresp_wells)
+        
+        # No nulls in underscore
+        self.assertFalse(cue_edited._respirationC.isnull().any().any())
+        self.assertTrue(np.isnan(cue_edited.respirationC.at[well_to_edit]))
+        
+    def test_null_values_from_negatives(self):
+        post_microresp_edited = self.post_microresp_plate
+        well_to_edit = ('A', 1)
+        post_microresp_edited.df.at[well_to_edit] = self.pre_microresp_plate.df.at[well_to_edit] + .1
+        
+        control_wells = [('H', i) for i in range(1, 13)]
+        cue_edited = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, control_wells)
+        
+        expected_null_wells = [('A', 1), ('A', 2), ('C', 2), ('C', 10), ('D', 8), ('D', 10), ('E', 2), ('E', 3), ('F', 7), ('F', 11), ('G', 2)]
+        
+        self.assertCountEqual(expected_null_wells, cue_edited._negative_cue_wells)
+        
+        for r in cue_edited.cue.index:
+            for c in cue_edited.cue.columns:
+                well = (r, c)
+                value = cue_edited.cue.at[well]
+                if well in expected_null_wells:
+                    self.assertTrue(np.isnan(value))
+                else:
+                    self.assertTrue(np.isfinite(value))
