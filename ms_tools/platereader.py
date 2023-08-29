@@ -7,6 +7,12 @@ import numpy as np
 from typing import List, Tuple
 import warnings
 
+class NegativeBiomassWarning(UserWarning):
+    pass
+
+class NegativeMicrorespWarning(UserWarning):
+    pass
+
 def od2biomassC(od, volume: float):
     """
     Convert an OD value to biomass of carbon (ug) assuming E.coli
@@ -215,6 +221,7 @@ class CUEexperiment:
         self._assumed_background_od = 0.04
         if control_wells is None:
             warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
+            control_wells = []
         self._control_wells = control_wells
         self._pre_od = pre_od
         self._post_od = post_od
@@ -222,6 +229,9 @@ class CUEexperiment:
         self._post_microresp = post_microresp
         self._bad_wells_od = bad_wells_od
         self._bad_wells_microresp = bad_wells_microresp
+        
+        self._negative_delta_biomass_wells = []
+        self._negative_delta_microresp_wells = []
         
         # Remove bad wells
         self._removeBadWells()
@@ -250,7 +260,7 @@ class CUEexperiment:
         # Compute background OD
         self._pre_od_background = self._assumed_background_od
         self._post_od_background = self._assumed_background_od
-        if self._control_wells is not None:
+        if self._control_wells:
             self._pre_od_background = self._pre_od.wellApply(self._control_wells, np.mean)
             self._post_od_background = self._post_od.wellApply(self._control_wells, np.mean)
         
@@ -263,17 +273,36 @@ class CUEexperiment:
         "Convert OD to biomass C"
         self._pre_biomassC = od2biomassC(self._pre_od_adjusted, self._culture_volume)
         self._post_biomassC = od2biomassC(self._post_od_adjusted, self._culture_volume)
+        
+        # Compute delta biomass
+        self._delta_biomassC = self._post_biomassC - self._pre_biomassC
+        self.delta_biomassC = self._delta_biomassC.copy()
+        
+        # Check for negative delta biomass
+        warnings.simplefilter('once', NegativeBiomassWarning)
+        for r in self._delta_biomassC.index:
+            for c in self._delta_biomassC.columns:
+                well = (r, c)
+                if well not in self._control_wells:
+                    value = self._delta_biomassC.at[well]
+                    if value < 0:
+                        warnings.warn('Negative biomass detected in at least one well. All cases set to null.')
+                        # Document negative well
+                        self._negative_delta_biomass_wells.append(well)
+                        # Set value as null
+                        self.delta_biomassC.at[well] = np.nan
 
     def _computeRespirationC(self):
         "Convert MicroResp absorbance to respiration C according to manual pg. 15-16"
         # Normalize
         self._microresp_background = self._pre_microresp.df.mean().mean()
-        self._microresp_normalized = self._post_microresp.df / self._pre_microresp.df * self._microresp_background
-
-        # % CO2
-        pct_co2 = -.2265 - 1.606/(1 - 6.771 * self._microresp_normalized)
+        microresp_normalized = self._post_microresp.df / self._pre_microresp.df * self._microresp_background
+        
         # Reverse column names (because of how microresp is done, columns are flipped)
-        self._pct_co2 = pct_co2.rename(columns=dict(zip(pct_co2.columns, reversed(pct_co2.columns))))
+        self._microresp_normalized =  microresp_normalized.rename(columns=dict(zip(microresp_normalized.columns, reversed(microresp_normalized.columns))))
+        
+        # % CO2
+        self._pct_co2 = -.2265 - 1.606/(1 - 6.771 * self._microresp_normalized)
 
         # Compute headspace
         self._microwell_volume = 300
@@ -283,14 +312,35 @@ class CUEexperiment:
         # Compute CO2-C mass
         self._temp = 25
         self._respirationC = self._pct_co2 / 100 * self._headspace * (44 / 22.4) * (12 / 44) * (273 / (273 + self._temp))
+        self._respirationC = self._respirationC.copy()
         
+        # Check instances where post > pre (absorbance values decrease with respiration)
+        negative_microresp = self._post_microresp.df.gt(self._pre_microresp.df)
+        warnings.simplefilter('once', NegativeMicrorespWarning)
+        for r in negative_microresp.index:
+            for c in negative_microresp.columns:
+                well = (r, c)
+                if well not in self._control_wells:
+                    value = negative_microresp.at[well]
+                    if value:
+                        warnings.warn('Negative MicroResp detected in at least one well. All cases set to null.')
+                        # Document negative well
+                        self._negative_delta_microresp_wells.append(well)
+                        # Set value as null
+                        self.respirationC.at[well] = np.nan
+
+    @property
+    def _negative_cue_wells(self):
+        return self._negative_delta_biomass_wells + self._negative_delta_microresp_wells
+    
     def _computeCUE(self):
         """
         Compute CUE according to my time-independent re-arrangement of Smith et al. 2021, Ecology Letters
 
         CUE = 1 / 1 + Rtot/(C1 - C0)
         """
-        self.cue = 1 / 1 + self._respirationC / (self._post_biomassC - self._pre_biomassC)
+        self._cue_no_null = 1 / 1 + self._respirationC / self._delta_biomassC
+        self.cue = 1 / 1 + self.respirationC / self.delta_biomassC
         
     def __repr__(self) -> str:
         return self.cue.__repr__()
