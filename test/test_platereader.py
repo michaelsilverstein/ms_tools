@@ -8,6 +8,9 @@ class testPlate(TestCase):
         self.test_file_path = 'test/test_data/DE.Microresp1.xlsx'
         self.test_sheet_name = 0
         self.measurement_name = 'measure1'
+        self.plate = Plate(self.test_file_path, self.test_sheet_name, self.measurement_name)
+        
+    def test_plate_data(self):
         test_data_text = """0.884	0.879	0.969	0.948	0.901	0.93	0.96	0.8	0.892	0.856	0.905	1.039
 0.831	0.821	0.847	0.863	0.894	0.855	0.913	0.835	0.826	0.795	0.822	0.85
 0.958	0.963	0.919	0.983	0.909	0.919	0.897	0.967	0.935	0.991	1.029	0.926
@@ -16,11 +19,8 @@ class testPlate(TestCase):
 0.918	0.974	0.94	0.876	0.959	0.831	0.905	0.975	0.959	0.879	0.973	0.996
 0.929	0.947	0.92	0.864	0.882	0.894	0.918	0.97	0.975	0.932	0.926	0.951
 0.928	0.986	0.917	0.911	0.963	0.903	0.922	0.992	1.094	1.021	1.268	1.473"""
-        self.test_data = np.array([list(map(float, line.split('\t'))) for line in test_data_text.split('\n')])
-        self.plate = Plate(self.test_file_path, self.test_sheet_name, self.measurement_name)
-        
-    def test_plate_data(self):
-        self.assertTrue(np.array_equal(self.plate.df.values, self.test_data))
+        test_data = np.array([list(map(float, line.split('\t'))) for line in test_data_text.split('\n')])
+        self.assertTrue(np.array_equal(self.plate.df.values, test_data))
         
     def test_sheet_name(self):
         with self.assertRaises(AssertionError) as context:
@@ -45,6 +45,11 @@ class testPlate(TestCase):
             well_value = self.plate.df.loc[well_idx]
             self.assertTrue(np.isreal(well_value))
             self.assertFalse(self.plate.removed_wells)
+            
+    def test_wellApply(self):
+        wells = [('H', i) for i in range(1, 13)]
+        last_row_mean = self.plate.df.loc['H'].mean()
+        self.assertEquals(self.plate.wellApply(wells, np.mean), last_row_mean)
 
     def test_o2biomassC(self):
         # This should be able to accept a value and table
@@ -58,11 +63,11 @@ class testCUEexperiment(TestCase):
         od_path = 'test/test_data/DE.Transfer1.xlsx'
         self.pre_od_plate, self.post_od_plate = [Plate(od_path, sheet) for sheet in [0, 1]]
         self.pre_microresp_plate, self.post_microresp_plate = [Plate(microresp_path, sheet) for sheet in [0, 1]]
-        self.cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
         
     def test_backgroundOD(self):
-        self.assertEqual(self.cue._assumed_background_od, self.cue._pre_od_background)
-        self.assertEqual(self.cue._assumed_background_od, self.cue._post_od_background)
+        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
+        self.assertEqual(cue._assumed_background_od, cue._pre_od_background)
+        self.assertEqual(cue._assumed_background_od, cue._post_od_background)
         
         control_wells = [('H', i) for i in range(1, 13)]
         
@@ -81,4 +86,3 @@ class testCUEexperiment(TestCase):
 
         self.assertCountEqual(cue._pre_microresp.removed_wells, microresp_bad_wells)
         self.assertCountEqual(cue._post_microresp.removed_wells, microresp_bad_wells)
-        
