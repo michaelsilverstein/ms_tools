@@ -312,7 +312,7 @@ class CUEexperiment:
         # Compute CO2-C mass
         self._temp = 25
         self._respirationC = self._pct_co2 / 100 * self._headspace * (44 / 22.4) * (12 / 44) * (273 / (273 + self._temp))
-        self.respirationC = self._respirationC.copy()
+        self._respirationC = self._respirationC.copy()
         
         # Check instances where post > pre (absorbance values decrease with respiration)
         negative_microresp = self._post_microresp.df.gt(self._pre_microresp.df)
@@ -339,6 +339,7 @@ class CUEexperiment:
 
         CUE = 1 / 1 + Rtot/(C1 - C0)
         """
+        self._cue_no_null = 1 / 1 + self._respirationC / self._delta_biomassC
         self.cue = 1 / 1 + self.respirationC / self.delta_biomassC
         
     def __repr__(self) -> str:
