@@ -7,11 +7,17 @@ import numpy as np
 from typing import List, Tuple
 import warnings
 
+from ms_tools.utils import check_len_n
+
 class NegativeBiomassWarning(UserWarning):
     pass
 
 class NegativeMicrorespWarning(UserWarning):
     pass
+
+assumed_background_OD = 0.04
+deepwell_volume = 1200
+culture_volume = 500
 
 def od2biomassC(od, volume: float):
     """
@@ -32,6 +38,9 @@ def od2biomassC(od, volume: float):
     biomass_c = biomass * .47
 
     return biomass_c
+
+def single2list(obj, n):
+    "Return an object repeated in a list"
 
 class Plate:
     """
@@ -171,15 +180,15 @@ class Plate:
         return self.df.__repr__()
 
 class CUEexperiment:
-    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=500, deepwell_volume: float=2000, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
-        """
+    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=culture_volume, deepwell_volume: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
+        f"""
         CUE Experiment containing data pertaining to the specified metric
-        | {pre, post}_{od, microresp}: Plate objects for pre and post measurements
+        | {{pre, post}}_{{od, microresp}}: Plate objects for pre and post measurements
         | dilution: Dilution factor for biomass OD measurement
-        | culture_volume: The volume (uL) of culture in each MicroResp well. (Default: 500uL)
-        | deepwell_volume: The volume (uL) of each well in the deepwell plate
-        | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default is all wells in row H.
-        | bad_wells_{od, microresp}: Wells to remove from each experiment in the form for `Plate.removeWells()`
+        | culture_volume: The volume (uL) of culture in each MicroResp well. Default: {culture_volume} uL
+        | deepwell_volume: The volume (uL) of each well in the deepwell plate. Default: {deepwell_volume} uL
+        | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default: {assumed_background_OD} as background OD.
+        | bad_wells_{{od, microresp}}: Wells to remove from each experiment in the form for `Plate.removeWells()`
 
         Computes CUE according to Smith et al. 2021, Ecology Letters (doi/10.1111/ele.13840)
 
@@ -218,7 +227,8 @@ class CUEexperiment:
         self._dilution = dilution
         self._culture_volume = culture_volume
         self._deepwell_volume = deepwell_volume
-        self._assumed_background_od = 0.04
+        self._assumed_background_od = assumed_background_OD
+        warnings.simplefilter('once', UserWarning)
         if control_wells is None:
             warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
             control_wells = []
@@ -345,56 +355,58 @@ class CUEexperiment:
     def __repr__(self) -> str:
         return self.cue.__repr__()
 
-    # def computeDeltaBiomass(self):
-    #     "Compute the change in biomass from pre to post"
-    #     # Change in OD
-    #     self.delta_od = self._post_od_adjusted - self._pre_od_adjusted
+class CUEexperiments:
+    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
+        f"""A collection of `CUEexperiment`s
 
-    #     # Change in biomass
-    #     # https://bionumbers.hms.harvard.edu/bionumber.aspx?s=n&v=3&id=108127
-    #     vol = 150e-6
-    #     # in ug
-    #     self.delta_biomass = .56 * self.delta_od * vol * 1e6
+        Inputs:
+        {{od, microresp}}_filepaths (list): A list of Excel filepaths for {{od, microresp}} where each workbook contains 
+            a sheet for T0 (sheet 0) and T1 (sheet 1).
+        dilutions: Either one number to use the same dilution for all OD measurements or a list for each
+        control_wells: Wells for background 
+            - None (default): Set background OD to {assumed_background_OD}
+            - List of tuples: Use list of tuples for each well for all experiments, 
+            - List of lists of tuples: Use different control wells for each experiment
+        culture_volumes (float, optional): Either one number or a list for each experiment. Default: {culture_volume} uL.
+        deepwell_volumes (float, optional): Either one number or a list for each experiment. Default: {deepwell_volume} uL.
+        bad_wells_od (List[Tuple], optional): _description_. Defaults to None.
+        bad_wells_microresp (List[Tuple], optional): _description_. Defaults to None.
+        """
+        
+        self._od_filepaths = od_filepaths
+        self._microresp_filepaths = microresp_filepaths
+        if len(self._od_filepaths) != len(self._microresp_filepaths):
+            raise ValueError('The same number of OD and MicroResp filepaths must be provided')
+        self.n_experiments = len(self._od_filepaths)
 
-    #     # Change in biomass -> C
-    #     # https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100649&ver=8&trm=percent+carbon+e+coli&org=
-    #     self.delta_biomass_c = self.delta_biomass * .47
-    
-    # def computeDeltaCO2(self):
-    #     "Compute change in CO2 from pre to post"
+        if isinstance(dilutions, (int, float)):
+            dilutions = [dilutions] * self.n_experiments
+        self._dilutions = dilutions
         
-    #     micro_pre, micro_post = self._pre_microresp.df, self._post_microresp.df
+        # Check for experiment-specific control wells
+        controls_lists_of_lists = all(isinstance(el, list) for el in control_wells)
+        if controls_lists_of_lists & (len(control_wells) != self.n_experiments):
+            raise ValueError('If different `control_wells` are provided for each experiment\
+                there must be one for each experiment')
+        # Check for None or single list
+        controls_single_list = all(isinstance(el, tuple) for el in control_wells)
+        if isinstance(control_wells, None) | controls_single_list:
+            control_wells = [control_wells] * self.n_experiments
+        self._control_wells = control_wells
         
-    #     # Normalize
-    #     self._micro_background = micro_pre.mean().mean()
-    #     self._micro_normalized = micro_post / micro_pre * self._micro_background
-
-    #     # % CO2
-    #     pct_co2 = -.2265 - 1.606/(1 - 6.771 * self._micro_normalized)
-    #     # Reverse column names (because of how microresp is done, columns are flipped)
-    #     self.pct_co2 = pct_co2.rename(columns=dict(zip(pct_co2.columns, reversed(pct_co2.columns))))
-
-    #     # Mass C from Microresp manual
+        if isinstance(culture_volumes, (int, float)):
+            culture_volumes = [culture_volumes] * self.n_experiments
+        self._culture_volumes = culture_volumes
         
-    #     # Estimate headspace
-    #     vol = (1 + .15) - .3
-    #     temp = 25
-    #     # ug of C
-    #     self.mass_co2 = self.pct_co2 * vol * (44/22.4) * (12/44) * (273/(273+temp))
+        if isinstance(deepwell_volumes, (int, float)):
+            deepwell_volumes = [deepwell_volumes] * self.n_experiments
+        self._deepwell_volumes = deepwell_volumes
         
-    # def computeCUE(self):
-    #     "Compute CUE from change in biomass and CO2"
+        # Check lengths of dilutions, control_wells, culture_volumes, and deepwell_volumes
+        for attr in ('_dilutions', '_control_wells', '_culture_volumes', '_deepwell_volumes'):
+            check_len_n(self, attr, self.n_experiments)
         
-    #     if not hasattr(self, 'delta_biomass_c'):
-    #         self.computeDeltaBiomass()
+        self._bad_wells_od = bad_wells_od
+        self._bad_wells_microresp = bad_wells_microresp
         
-    #     if not hasattr(self, 'mass_co2'):
-    #         self.computeDeltaCO2()
         
-    #     delta_biomass_c, mass_co2 = self.delta_biomass_c, self.mass_co2
-        
-    #     # Remove negative values
-    #     for df in delta_biomass_c, mass_co2:
-    #         df[df.lt(0)] = np.nan
-        
-    #     self.cue = delta_biomass_c / (delta_biomass_c + mass_co2)

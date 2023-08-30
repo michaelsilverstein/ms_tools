@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy as np
 
-from ms_tools.platereader import Plate, CUEexperiment, od2biomassC
+from ms_tools.platereader import Plate, CUEexperiment, CUEexperiments, od2biomassC
 
 class testPlate(TestCase):
     def setUp(self):
@@ -49,7 +49,7 @@ class testPlate(TestCase):
     def test_wellApply(self):
         wells = [('H', i) for i in range(1, 13)]
         last_row_mean = self.plate.df.loc['H'].mean()
-        self.assertEquals(self.plate.wellApply(wells, np.mean), last_row_mean)
+        self.assertEqual(self.plate.wellApply(wells, np.mean), last_row_mean)
 
     def test_o2biomassC(self):
         # This should be able to accept a value and table
@@ -72,8 +72,8 @@ class testCUEexperiment(TestCase):
         control_wells = [('H', i) for i in range(1, 13)]
         
         cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, control_wells=control_wells)
-        self.assertAlmostEquals(0.09358333333333334, cue._pre_od_background)
-        self.assertAlmostEquals(0.09641666666666666, cue._post_od_background)
+        self.assertAlmostEqual(0.09358333333333334, cue._pre_od_background)
+        self.assertAlmostEqual(0.09641666666666666, cue._post_od_background)
     
     def test_removeBadWells(self):
         od_bad_wells = [('A', 1), ('A', 2)]
@@ -108,7 +108,7 @@ class testCUEexperiment(TestCase):
     def test_negative_microresp(self):
         # All CUE values as expected with original data
         cue_unedited = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
-        self.assertEquals([], cue_unedited._negative_delta_microresp_wells)
+        self.assertEqual([], cue_unedited._negative_delta_microresp_wells)
 
         # Put unexpected relationship
         post_microresp_edited = self.post_microresp_plate
@@ -142,3 +142,23 @@ class testCUEexperiment(TestCase):
                     self.assertTrue(np.isnan(value))
                 else:
                     self.assertTrue(np.isfinite(value))
+                    
+class testCUEexperiments(TestCase):
+    def setUp(self) -> None:
+        self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * 2
+        self.microresp_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * 2
+        self.dilutions = 5
+        self.control_wells = [('H', i) for i in range(1, 13)]
+        
+    def test_same_number_filepaths(self):
+        # Unequal number of paths
+        od_filepaths = self.od_filepaths + ['test/test_data/DE.Transfer1.xlsx']
+        with self.assertRaises(ValueError) as context:
+            CUEexperiments(od_filepaths, self.microresp_filepaths, self.dilutions)
+        self.assertEqual('The same number of OD and MicroResp filepaths must be provided', str(context.exception))
+        
+        # Equal number of paths
+        cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions)
+        self.assertEqual(2, cues.n_experiments)
+        
+    
