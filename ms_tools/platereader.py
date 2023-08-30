@@ -339,8 +339,8 @@ class CUEexperiment:
 
         CUE = 1 / 1 + Rtot/(C1 - C0)
         """
-        self._cue_no_null = 1 / 1 + self._respirationC / self._delta_biomassC
-        self.cue = 1 / 1 + self.respirationC / self.delta_biomassC
+        self._cue_no_null = 1 / (1 + self._respirationC / self._delta_biomassC)
+        self.cue = 1 / (1 + self.respirationC / self.delta_biomassC)
         
     def __repr__(self) -> str:
         return self.cue.__repr__()
