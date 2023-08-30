@@ -356,7 +356,7 @@ class CUEexperiment:
         return self.cue.__repr__()
 
 class CUEexperiments:
-    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
+    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}):
         f"""A collection of `CUEexperiment`s
 
         Inputs:
@@ -369,8 +369,7 @@ class CUEexperiments:
             - List of lists of tuples: Use different control wells for each experiment
         culture_volumes (float, optional): Either one number or a list for each experiment. Default: {culture_volume} uL.
         deepwell_volumes (float, optional): Either one number or a list for each experiment. Default: {deepwell_volume} uL.
-        bad_wells_od (List[Tuple], optional): _description_. Defaults to None.
-        bad_wells_microresp (List[Tuple], optional): _description_. Defaults to None.
+        bad_wells_{{od, microresp}}: Dictionary indicating wells to remove for OD and microresp (ex. {{0: [('A', 2), ('B', 1)]}}). Zero indexed!
         """
         ## SETUP
         self._od_filepaths = od_filepaths
@@ -408,13 +407,14 @@ class CUEexperiments:
         for attr in ('_dilutions', '_control_wells', '_culture_volumes', '_deepwell_volumes'):
             check_len_n(self, attr, self.n_experiments)
         
-        self._bad_wells_od = bad_wells_od
-        self._bad_wells_microresp = bad_wells_microresp
+        self._bad_wells_od = [bad_wells_od.get(i) for i in range(self.n_experiments)]
+        self._bad_wells_microresp = [bad_wells_microresp.get(i) for i in range(self.n_experiments)]
         
         ## READ IN DATA
         self._read_od_files()
     
     def _read_od_files(self):
+        ## TODO: PICKUP HERE
         self._pre_od_plates, self._post_od_plates = [], []
         
         for filepath in self._od_filepaths:

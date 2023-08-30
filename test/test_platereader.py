@@ -245,4 +245,11 @@ class testCUEexperiments(TestCase):
             CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
         self.assertEqual(f'"_deepwell_volumes" must be of length {self.n_experiments}', str(context.exception))
         
+    def test_read_od(self):
+        pre_ods = [Plate(self.od_filepaths[0], 0, 'od')] * self.n_experiments
+        post_ods = [Plate(self.od_filepaths[0], 1, 'od')] * self.n_experiments
+        
+        self.assertEqual(pre_ods, self.cues._pre_od_plates)
+        self.assertEqual(post_ods, self.cues._post_od_plates)
+        
         
