@@ -1,7 +1,7 @@
 from unittest import TestCase
 import numpy as np
 
-from ms_tools.platereader import Plate, CUEexperiment, CUEexperiments, od2biomassC
+from ms_tools.platereader import Plate, CUEexperiment, CUEexperiments, od2biomassC, culture_volume, deepwell_volume
 
 class testPlate(TestCase):
     def setUp(self):
@@ -145,10 +145,13 @@ class testCUEexperiment(TestCase):
                     
 class testCUEexperiments(TestCase):
     def setUp(self) -> None:
-        self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * 2
-        self.microresp_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * 2
+        self.n_experiments = 2
+        self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * self.n_experiments
+        self.microresp_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * self.n_experiments
         self.dilutions = 5
         self.control_wells = [('H', i) for i in range(1, 13)]
+        self.cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells)
+        
         
     def test_same_number_filepaths(self):
         # Unequal number of paths
@@ -158,5 +161,88 @@ class testCUEexperiments(TestCase):
         self.assertEqual('The same number of OD and MicroResp filepaths must be provided', str(context.exception))
         
         # Equal number of paths
-        cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions)
-        self.assertEqual(2, cues.n_experiments)
+        self.assertEqual(2, self.cues.n_experiments)
+
+    def test_dilutions(self):
+        # Single value becoming n
+        expected_dilutions = [self.dilutions] * self.n_experiments
+        self.assertEqual(expected_dilutions, self.cues._dilutions)
+        
+        # Explicitly providing n
+        dilutions = [5, 5]
+        explicit_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, dilutions, self.control_wells)
+        self.assertTrue(dilutions, explicit_cues._dilutions)
+        
+        # Raise error
+        dilutions = [5, 5, 5]
+        with self.assertRaises(ValueError) as context:
+            CUEexperiments(self.od_filepaths, self.microresp_filepaths, dilutions, self.control_wells)
+        self.assertEqual(f'"_dilutions" must be of length {self.n_experiments}', str(context.exception))
+        
+    def test_control_wells(self):
+        # None case
+        none_control_wells = None
+        none_wells_cue = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, none_control_wells)
+        expected_control_wells = [None] * self.n_experiments
+        self.assertEqual(expected_control_wells, none_wells_cue._control_wells)
+        
+        # One list
+        expected_control_wells = [self.control_wells] * self.n_experiments
+        self.assertEqual(expected_control_wells, self.cues._control_wells)
+        
+        # Multiple lists correct
+        correct_multiple_control_wells = [self.control_wells, [('A', 1)]]
+        multiple_control_wells_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, correct_multiple_control_wells)
+        self.assertEqual(correct_multiple_control_wells, multiple_control_wells_cues._control_wells)
+        
+        # Wrong number of lists
+        incorrect_multiple_control_wells = [self.control_wells, [('A', 1)], [('B', 1)]]
+        with self.assertRaises(ValueError) as context:
+            CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, incorrect_multiple_control_wells)
+        self.assertEqual('If different `control_wells` are provided for each experiment there must be only one for each experiment', str(context.exception))
+        
+    def test_culture_volumes(self):
+        # Default: No volume provided
+        expected_volumes = [culture_volume] * self.n_experiments
+        self.assertEqual(expected_volumes, self.cues._culture_volumes)
+        
+        # Providing one volume
+        provided_vol = 400
+        provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, provided_vol)
+        expected_vols = [provided_vol] * self.n_experiments
+        self.assertEqual(expected_vols, provided_cues._culture_volumes)
+        
+        # Providing multiple expected_volumes
+        provided_vols = [100, 200]
+        provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, provided_vols)
+        self.assertEqual(provided_vols, provided_cues._culture_volumes)
+        
+        # Wrong number of volumes
+        provided_vols = [100, 200, 300]
+        with self.assertRaises(ValueError) as context:
+            CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, provided_vols)
+        self.assertEqual(f'"_culture_volumes" must be of length {self.n_experiments}', str(context.exception))
+
+    def test_deepwell_volumes(self):
+        # Default: No volume provided
+        expected_volumes = [deepwell_volume] * self.n_experiments
+        self.assertEqual(expected_volumes, self.cues._deepwell_volumes)
+        
+        # Providing one volume
+        provided_vol = 400
+        provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vol)
+        expected_vols = [provided_vol] * self.n_experiments
+        self.assertEqual(expected_vols, provided_cues._deepwell_volumes)
+        
+        # Providing multiple expected_volumes
+        provided_vols = [100, 200]
+        provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
+        self.assertEqual(provided_vols, provided_cues._deepwell_volumes)
+        
+        # Wrong number of volumes
+        provided_vols = [100, 200, 300]
+        with self.assertRaises(ValueError) as context:
+            CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
+        self.assertEqual(f'"_deepwell_volumes" must be of length {self.n_experiments}', str(context.exception))
+        
+        

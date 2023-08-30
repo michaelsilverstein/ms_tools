@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Tuple
 import warnings
 
-from ms_tools.utils import check_len_n
+from ms_tools.utils import check_len_n, check_n_sheets
 
 class NegativeBiomassWarning(UserWarning):
     pass
@@ -372,7 +372,7 @@ class CUEexperiments:
         bad_wells_od (List[Tuple], optional): _description_. Defaults to None.
         bad_wells_microresp (List[Tuple], optional): _description_. Defaults to None.
         """
-        
+        ## SETUP
         self._od_filepaths = od_filepaths
         self._microresp_filepaths = microresp_filepaths
         if len(self._od_filepaths) != len(self._microresp_filepaths):
@@ -383,14 +383,16 @@ class CUEexperiments:
             dilutions = [dilutions] * self.n_experiments
         self._dilutions = dilutions
         
+        # Handle None control_wells
+        if isinstance(control_wells, type(None)):
+            control_wells = [control_wells] * self.n_experiments
         # Check for experiment-specific control wells
         controls_lists_of_lists = all(isinstance(el, list) for el in control_wells)
         if controls_lists_of_lists & (len(control_wells) != self.n_experiments):
-            raise ValueError('If different `control_wells` are provided for each experiment\
-                there must be one for each experiment')
-        # Check for None or single list
+            raise ValueError('If different `control_wells` are provided for each experiment there must be only one for each experiment')
+        # Check for single list
         controls_single_list = all(isinstance(el, tuple) for el in control_wells)
-        if isinstance(control_wells, None) | controls_single_list:
+        if controls_single_list:
             control_wells = [control_wells] * self.n_experiments
         self._control_wells = control_wells
         
@@ -408,9 +410,15 @@ class CUEexperiments:
         
         self._bad_wells_od = bad_wells_od
         self._bad_wells_microresp = bad_wells_microresp
+        
+        ## READ IN DATA
+        self._read_od_files()
     
     def _read_od_files(self):
-        for filepath in self._od_filepaths:
-            with pd.ExcelFile(filepath) as fh:
-                n_sheets = 
+        self._pre_od_plates, self._post_od_plates = [], []
         
+        for filepath in self._od_filepaths:
+            check_n_sheets(filepath, 2)
+            for sheet, l in zip([0, 1], [self._pre_od_plates, self._post_od_plates]):
+                p = Plate(filepath, sheet, 'od')
+                l.append(p)
