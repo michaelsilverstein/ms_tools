@@ -160,5 +160,3 @@ class testCUEexperiments(TestCase):
         # Equal number of paths
         cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions)
         self.assertEqual(2, cues.n_experiments)
-        
-    

@@ -408,5 +408,9 @@ class CUEexperiments:
         
         self._bad_wells_od = bad_wells_od
         self._bad_wells_microresp = bad_wells_microresp
-        
+    
+    def _read_od_files(self):
+        for filepath in self._od_filepaths:
+            with pd.ExcelFile(filepath) as fh:
+                n_sheets = 
         
