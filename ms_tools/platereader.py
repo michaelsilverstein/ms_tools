@@ -380,7 +380,7 @@ class CUEexperiments:
 
         if isinstance(dilutions, (int, float)):
             dilutions = [dilutions] * self.n_experiments
-        self._dilutions = dilutions
+        self._dilutions = tuple(dilutions)
         
         # Handle None control_wells
         if isinstance(control_wells, type(None)):
@@ -393,32 +393,45 @@ class CUEexperiments:
         controls_single_list = all(isinstance(el, tuple) for el in control_wells)
         if controls_single_list:
             control_wells = [control_wells] * self.n_experiments
-        self._control_wells = control_wells
+        self._control_wells = tuple(control_wells)
         
         if isinstance(culture_volumes, (int, float)):
             culture_volumes = [culture_volumes] * self.n_experiments
-        self._culture_volumes = culture_volumes
+        self._culture_volumes = tuple(culture_volumes)
         
         if isinstance(deepwell_volumes, (int, float)):
             deepwell_volumes = [deepwell_volumes] * self.n_experiments
-        self._deepwell_volumes = deepwell_volumes
+        self._deepwell_volumes = tuple(deepwell_volumes)
         
         # Check lengths of dilutions, control_wells, culture_volumes, and deepwell_volumes
         for attr in ('_dilutions', '_control_wells', '_culture_volumes', '_deepwell_volumes'):
             check_len_n(self, attr, self.n_experiments)
         
-        self._bad_wells_od = [bad_wells_od.get(i) for i in range(self.n_experiments)]
-        self._bad_wells_microresp = [bad_wells_microresp.get(i) for i in range(self.n_experiments)]
+        self._bad_wells_od = tuple(bad_wells_od.get(i) for i in range(self.n_experiments))
+        self._bad_wells_microresp = tuple(bad_wells_microresp.get(i) for i in range(self.n_experiments))
         
         ## READ IN DATA
-        self._read_od_files()
+        self.pre_ods = None
+        self.post_ods = None
+        self.pre_microresps = None
+        self.post_microresps = None
+        self._read_excel_files()
     
-    def _read_od_files(self):
-        ## TODO: PICKUP HERE
-        self._pre_od_plates, self._post_od_plates = [], []
-        
-        for filepath in self._od_filepaths:
-            check_n_sheets(filepath, 2)
-            for sheet, l in zip([0, 1], [self._pre_od_plates, self._post_od_plates]):
-                p = Plate(filepath, sheet, 'od')
-                l.append(p)
+    def _read_excel_files(self):
+        for datatype in ['od', 'microresp']:
+            filepath_attr = f'_{datatype}_filepaths'
+            filepaths = getattr(self, filepath_attr)
+            pre, post = [], []
+            for filepath in filepaths:
+                check_n_sheets(filepath, 2)
+                for sheet, l in zip([0, 1], [pre, post]):
+                    p = Plate(filepath, sheet, datatype)
+                    l.append(p)
+
+            pre = tuple(pre)
+            pre_plates_attr = f'pre_{datatype}s'
+            setattr(self, pre_plates_attr, pre)
+            
+            post = tuple(post)
+            post_plates_attr = f'post_{datatype}s'
+            setattr(self, post_plates_attr, post)

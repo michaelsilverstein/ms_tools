@@ -145,9 +145,9 @@ class testCUEexperiment(TestCase):
                     
 class testCUEexperiments(TestCase):
     def setUp(self) -> None:
-        self.n_experiments = 2
-        self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * self.n_experiments
-        self.microresp_filepaths = ['test/test_data/DE.Transfer1.xlsx'] * self.n_experiments
+        self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx', 'test/test_data/DE.Transfer3.xlsx']
+        self.microresp_filepaths = ['test/test_data/DE.Microresp1.xlsx', 'test/test_data/DE.Microresp3.xlsx']
+        self.n_experiments = len(self.od_filepaths)
         self.dilutions = 5
         self.control_wells = [('H', i) for i in range(1, 13)]
         self.cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells)
@@ -165,11 +165,11 @@ class testCUEexperiments(TestCase):
 
     def test_dilutions(self):
         # Single value becoming n
-        expected_dilutions = [self.dilutions] * self.n_experiments
+        expected_dilutions = tuple([self.dilutions] * self.n_experiments)
         self.assertEqual(expected_dilutions, self.cues._dilutions)
         
         # Explicitly providing n
-        dilutions = [5, 5]
+        dilutions = (5, 5)
         explicit_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, dilutions, self.control_wells)
         self.assertTrue(dilutions, explicit_cues._dilutions)
         
@@ -183,37 +183,37 @@ class testCUEexperiments(TestCase):
         # None case
         none_control_wells = None
         none_wells_cue = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, none_control_wells)
-        expected_control_wells = [None] * self.n_experiments
+        expected_control_wells = tuple([None] * self.n_experiments)
         self.assertEqual(expected_control_wells, none_wells_cue._control_wells)
         
         # One list
-        expected_control_wells = [self.control_wells] * self.n_experiments
+        expected_control_wells = tuple([self.control_wells] * self.n_experiments)
         self.assertEqual(expected_control_wells, self.cues._control_wells)
         
         # Multiple lists correct
-        correct_multiple_control_wells = [self.control_wells, [('A', 1)]]
+        correct_multiple_control_wells = (self.control_wells, [('A', 1)])
         multiple_control_wells_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, correct_multiple_control_wells)
         self.assertEqual(correct_multiple_control_wells, multiple_control_wells_cues._control_wells)
         
         # Wrong number of lists
-        incorrect_multiple_control_wells = [self.control_wells, [('A', 1)], [('B', 1)]]
+        incorrect_multiple_control_wells = (self.control_wells, [('A', 1)], [('B', 1)])
         with self.assertRaises(ValueError) as context:
             CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, incorrect_multiple_control_wells)
         self.assertEqual('If different `control_wells` are provided for each experiment there must be only one for each experiment', str(context.exception))
         
     def test_culture_volumes(self):
         # Default: No volume provided
-        expected_volumes = [culture_volume] * self.n_experiments
+        expected_volumes = tuple([culture_volume] * self.n_experiments)
         self.assertEqual(expected_volumes, self.cues._culture_volumes)
         
         # Providing one volume
         provided_vol = 400
         provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, provided_vol)
-        expected_vols = [provided_vol] * self.n_experiments
+        expected_vols = tuple([provided_vol] * self.n_experiments)
         self.assertEqual(expected_vols, provided_cues._culture_volumes)
         
         # Providing multiple expected_volumes
-        provided_vols = [100, 200]
+        provided_vols = (100, 200)
         provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, provided_vols)
         self.assertEqual(provided_vols, provided_cues._culture_volumes)
         
@@ -225,17 +225,17 @@ class testCUEexperiments(TestCase):
 
     def test_deepwell_volumes(self):
         # Default: No volume provided
-        expected_volumes = [deepwell_volume] * self.n_experiments
+        expected_volumes = tuple([deepwell_volume] * self.n_experiments)
         self.assertEqual(expected_volumes, self.cues._deepwell_volumes)
         
         # Providing one volume
         provided_vol = 400
         provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vol)
-        expected_vols = [provided_vol] * self.n_experiments
+        expected_vols = tuple([provided_vol] * self.n_experiments)
         self.assertEqual(expected_vols, provided_cues._deepwell_volumes)
         
         # Providing multiple expected_volumes
-        provided_vols = [100, 200]
+        provided_vols = (100, 200)
         provided_cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
         self.assertEqual(provided_vols, provided_cues._deepwell_volumes)
         
@@ -245,11 +245,32 @@ class testCUEexperiments(TestCase):
             CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
         self.assertEqual(f'"_deepwell_volumes" must be of length {self.n_experiments}', str(context.exception))
         
-    def test_read_od(self):
-        pre_ods = [Plate(self.od_filepaths[0], 0, 'od')] * self.n_experiments
-        post_ods = [Plate(self.od_filepaths[0], 1, 'od')] * self.n_experiments
+    def test_read_excel_files(self):
+        pre_ods = [Plate(filepath, 0, 'od') for filepath in self.od_filepaths]
+        post_ods = [Plate(filepath, 1, 'od') for filepath in self.od_filepaths]
         
-        self.assertEqual(pre_ods, self.cues._pre_od_plates)
-        self.assertEqual(post_ods, self.cues._post_od_plates)
+        pre_microresps = [Plate(filepath, 0, 'od') for filepath in self.microresp_filepaths]
+        post_microresps = [Plate(filepath, 1, 'od') for filepath in self.microresp_filepaths]
         
-        
+        for experiment in range(self.n_experiments):
+            pre_od_df = pre_ods[experiment].df
+            post_od_df = post_ods[experiment].df
+            
+            pre_microresp_df = pre_microresps[experiment].df
+            post_microresp_df = post_microresps[experiment].df
+            
+            # Only test equality of DataFrames bc doing it with whole `Plate` object is obnoxious
+            pre_od_eval = pre_od_df.eq(self.cues.pre_ods[experiment].df).all().all()
+            self.assertTrue(pre_od_eval)
+            
+            post_od_eval = post_od_df.eq(self.cues.post_ods[experiment].df).all().all()
+            self.assertTrue(post_od_eval)
+            
+            pre_microresp_eval = pre_microresp_df.eq(self.cues.pre_microresps[experiment].df).all().all()
+            self.assertTrue(pre_microresp_eval)
+            
+            post_microresp_eval = post_microresp_df.eq(self.cues.post_microresps[experiment].df).all().all()
+            self.assertTrue(post_microresp_eval)
+            
+    
+    
