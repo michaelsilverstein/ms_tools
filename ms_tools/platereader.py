@@ -180,7 +180,7 @@ class Plate:
         return self.df.__repr__()
 
 class CUEexperiment:
-    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=culture_volume, deepwell_volume: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
+    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=culture_volume, deepwell_volume: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None, name: str=None):
         f"""
         CUE Experiment containing data pertaining to the specified metric
         | {{pre, post}}_{{od, microresp}}: Plate objects for pre and post measurements
@@ -189,7 +189,8 @@ class CUEexperiment:
         | deepwell_volume: The volume (uL) of each well in the deepwell plate. Default: {deepwell_volume} uL
         | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default: {assumed_background_OD} as background OD.
         | bad_wells_{{od, microresp}}: Wells to remove from each experiment in the form for `Plate.removeWells()`
-
+        | name: Experiment name
+        
         Computes CUE according to Smith et al. 2021, Ecology Letters (doi/10.1111/ele.13840)
 
         Growth rate:
@@ -239,6 +240,7 @@ class CUEexperiment:
         self._post_microresp = post_microresp
         self._bad_wells_od = bad_wells_od
         self._bad_wells_microresp = bad_wells_microresp
+        self.name = name
         
         self._negative_delta_biomass_wells = []
         self._negative_delta_microresp_wells = []
@@ -356,7 +358,7 @@ class CUEexperiment:
         return self.cue.__repr__()
 
 class CUEexperiments:
-    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}):
+    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={},):
         f"""A collection of `CUEexperiment`s
 
         Inputs:
@@ -416,6 +418,8 @@ class CUEexperiments:
         self.pre_microresps = None
         self.post_microresps = None
         self._read_excel_files()
+        
+        ## GENERATE CUE COLLECTION
     
     def _read_excel_files(self):
         for datatype in ['od', 'microresp']:
@@ -435,3 +439,8 @@ class CUEexperiments:
             post = tuple(post)
             post_plates_attr = f'post_{datatype}s'
             setattr(self, post_plates_attr, post)
+            
+    def _create_cues(self):
+        for pre_od, post_od, pre_microresp, post_microresp, dilution, control_wells, culture_volume, deepwell_volume, bad_wells_od, bad_wells_microresp, name in\
+            zip(self.pre_ods, self.post_ods, self.pre_microresps, self.post_microresps, self._dilutions, self._control_wells, self._culture_volumes, self._deepwell_volumes, self._bad_wells_od, self._bad_wells_microresp, range(self.n_experiments)):
+            pass

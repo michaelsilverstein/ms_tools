@@ -244,6 +244,18 @@ class testCUEexperiments(TestCase):
         with self.assertRaises(ValueError) as context:
             CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
         self.assertEqual(f'"_deepwell_volumes" must be of length {self.n_experiments}', str(context.exception))
+    
+    def test_bad_wells(self):
+        bad_od_wells = {1: [('A', 1), ('B', 2)]}
+        bad_microresp_wells = {0: [('C', 3)]}
+        
+        cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, bad_wells_od=bad_od_wells, bad_wells_microresp=bad_microresp_wells)
+        
+        expected_bad_od_wells = (None, [('A', 1), ('B', 2)])
+        self.assertEqual(expected_bad_od_wells, cues._bad_wells_od)
+        
+        expected_bad_microresp_wells = ([('C', 3)], None)
+        self.assertEqual(expected_bad_microresp_wells, cues._bad_wells_microresp)
         
     def test_read_excel_files(self):
         pre_ods = [Plate(filepath, 0, 'od') for filepath in self.od_filepaths]
