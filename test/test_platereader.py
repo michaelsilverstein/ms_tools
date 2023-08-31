@@ -271,31 +271,22 @@ class testCUEexperiments(TestCase):
         self.assertEqual(expected_bad_microresp_wells, cues._bad_wells_microresp)
         
     def test_read_excel_files(self):
-        pre_ods = [Plate(filepath, 0, 'od') for filepath in self.od_filepaths]
-        post_ods = [Plate(filepath, 1, 'od') for filepath in self.od_filepaths]
+        pre_ods = tuple(Plate(filepath, 0, 'od') for filepath in self.od_filepaths)
+        self.assertEqual(pre_ods, self.cues.pre_ods)
         
-        pre_microresps = [Plate(filepath, 0, 'od') for filepath in self.microresp_filepaths]
-        post_microresps = [Plate(filepath, 1, 'od') for filepath in self.microresp_filepaths]
+        post_ods = tuple(Plate(filepath, 1, 'od') for filepath in self.od_filepaths)
+        self.assertEqual(post_ods, self.cues.post_ods)
         
-        for experiment in range(self.n_experiments):
-            pre_od_df = pre_ods[experiment].df
-            post_od_df = post_ods[experiment].df
-            
-            pre_microresp_df = pre_microresps[experiment].df
-            post_microresp_df = post_microresps[experiment].df
-            
-            # Only test equality of DataFrames bc doing it with whole `Plate` object is obnoxious
-            pre_od_eval = pre_od_df.eq(self.cues.pre_ods[experiment].df).all().all()
-            self.assertTrue(pre_od_eval)
-            
-            post_od_eval = post_od_df.eq(self.cues.post_ods[experiment].df).all().all()
-            self.assertTrue(post_od_eval)
-            
-            pre_microresp_eval = pre_microresp_df.eq(self.cues.pre_microresps[experiment].df).all().all()
-            self.assertTrue(pre_microresp_eval)
-            
-            post_microresp_eval = post_microresp_df.eq(self.cues.post_microresps[experiment].df).all().all()
-            self.assertTrue(post_microresp_eval)
+        pre_microresps = tuple(Plate(filepath, 0, 'od') for filepath in self.microresp_filepaths)
+        self.assertEqual(pre_microresps, self.cues.pre_microresps)
+        
+        post_microresps = tuple(Plate(filepath, 1, 'od') for filepath in self.microresp_filepaths)
+        self.assertEqual(post_microresps, self.cues.post_microresps)
             
     def test_cues(self):
-        pass
+        pre_ods, post_ods = [[Plate(filepath, sheet, 'od') for filepath in self.od_filepaths] for sheet in [0, 1]]
+        pre_microresps, post_microresps = [[Plate(filepath, sheet, 'microresp') for filepath in self.microresp_filepaths] for sheet in [0, 1]]
+        
+        expected_cues = tuple([CUEexperiment(pre_od, post_od, pre_microresp, post_microresp, 5, self.control_wells) for pre_od, post_od, pre_microresp, post_microresp in zip(pre_ods, post_ods, pre_microresps, post_microresps)])
+        
+        self.assertEqual(expected_cues, self.cues.cues)

@@ -161,7 +161,7 @@ class Plate:
         """
         df = self.df
         for well_idx in wells:
-            df.at[well_idx] = np.nan
+            df.at[well_idx] = None
 
         self.removed_wells.extend(wells)
 
@@ -182,6 +182,10 @@ class Plate:
 
     def __repr__(self) -> str:
         return self.df.__repr__()
+    
+    def __eq__(self, other) -> bool:
+        # Just check that dataframes are equal
+        return (self.df.equals(other.df))
 
 class CUEexperiment:
     def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=culture_volume, deepwell_volume: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None, name: str=None):
@@ -304,7 +308,7 @@ class CUEexperiment:
                         # Document negative well
                         self._negative_delta_biomass_wells.append(well)
                         # Set value as null
-                        self.delta_biomassC.at[well] = np.nan
+                        self.delta_biomassC.at[well] = None
 
     def _computeRespirationC(self):
         "Convert MicroResp absorbance to respiration C according to manual pg. 15-16"
@@ -340,7 +344,7 @@ class CUEexperiment:
                         # Document negative well
                         self._negative_delta_microresp_wells.append(well)
                         # Set value as null
-                        self.respirationC.at[well] = np.nan
+                        self.respirationC.at[well] = None
 
     @property
     def _negative_cue_wells(self):
@@ -358,6 +362,9 @@ class CUEexperiment:
     def __repr__(self) -> str:
         return self.cue.__repr__()
 
+    def __eq__(self, other) -> bool:
+        return self.cue.equals(other.cue)
+    
 class CUEexperiments:
     def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}, names: List[str]=None):
         f"""A collection of `CUEexperiment`s
