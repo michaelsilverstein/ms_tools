@@ -476,3 +476,11 @@ class CUEexperiments:
             cue = CUEexperiment(**kwargs)
             cues.append(cue)
         self.cues = tuple(cues)
+        
+        
+    def stack_data(self):
+        "Return a stacked dataframe for each datatype"
+        # TODO: helpful utility function
+        pass
+        
+        
