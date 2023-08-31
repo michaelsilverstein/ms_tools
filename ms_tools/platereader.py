@@ -51,7 +51,7 @@ class Plate:
     Excel plate reader data for single plate spectrophotometer reading
     """
 
-    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type=None, row_type=None, plate_format=96, find_idx=True):
+    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type='columns', row_type='row', plate_format=96, find_idx=True):
         """
         filepath: Path to plate reader Excel file
         sheet_name: Name of sheet to reader from `filepath`. Must be specified.
