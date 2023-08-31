@@ -9,12 +9,16 @@ import warnings
 
 from ms_tools.utils import check_len_n, check_n_sheets
 
-class NegativeBiomassWarning(UserWarning):
-    pass
+# class NegativeBiomassWarning(UserWarning):
+#     pass
 
-class NegativeMicrorespWarning(UserWarning):
-    pass
+# class NegativeMicrorespWarning(UserWarning):
+#     pass
 
+# warnings.simplefilter('module', UserWarning)
+# warnings.simplefilter('module', NegativeBiomassWarning)
+# warnings.simplefilter('module', NegativeMicrorespWarning)
+        
 assumed_background_OD = 0.04
 deepwell_volume = 1200
 culture_volume = 500
@@ -229,9 +233,8 @@ class CUEexperiment:
         self._culture_volume = culture_volume
         self._deepwell_volume = deepwell_volume
         self._assumed_background_od = assumed_background_OD
-        warnings.simplefilter('once', UserWarning)
         if control_wells is None:
-            warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
+            # warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
             control_wells = []
         self._control_wells = control_wells
         self._pre_od = pre_od
@@ -291,14 +294,13 @@ class CUEexperiment:
         self.delta_biomassC = self._delta_biomassC.copy()
         
         # Check for negative delta biomass
-        warnings.simplefilter('once', NegativeBiomassWarning)
         for r in self._delta_biomassC.index:
             for c in self._delta_biomassC.columns:
                 well = (r, c)
                 if well not in self._control_wells:
                     value = self._delta_biomassC.at[well]
                     if value < 0:
-                        warnings.warn('Negative biomass detected in at least one well. All cases set to null.')
+                        # warnings.warn('Negative biomass detected in at least one well. All cases set to null.')
                         # Document negative well
                         self._negative_delta_biomass_wells.append(well)
                         # Set value as null
@@ -328,14 +330,13 @@ class CUEexperiment:
         
         # Check instances where post > pre (absorbance values decrease with respiration)
         negative_microresp = self._post_microresp.df.gt(self._pre_microresp.df)
-        warnings.simplefilter('once', NegativeMicrorespWarning)
         for r in negative_microresp.index:
             for c in negative_microresp.columns:
                 well = (r, c)
                 if well not in self._control_wells:
                     value = negative_microresp.at[well]
                     if value:
-                        warnings.warn('Negative MicroResp detected in at least one well. All cases set to null.')
+                        # warnings.warn('Negative MicroResp detected in at least one well. All cases set to null.')
                         # Document negative well
                         self._negative_delta_microresp_wells.append(well)
                         # Set value as null
@@ -358,7 +359,7 @@ class CUEexperiment:
         return self.cue.__repr__()
 
 class CUEexperiments:
-    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={},):
+    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}, names: List[str]=None):
         f"""A collection of `CUEexperiment`s
 
         Inputs:
@@ -372,6 +373,7 @@ class CUEexperiments:
         culture_volumes (float, optional): Either one number or a list for each experiment. Default: {culture_volume} uL.
         deepwell_volumes (float, optional): Either one number or a list for each experiment. Default: {deepwell_volume} uL.
         bad_wells_{{od, microresp}}: Dictionary indicating wells to remove for OD and microresp (ex. {{0: [('A', 2), ('B', 1)]}}). Zero indexed!
+        names: A list of names for each experiment or automatically name 0 through N (default).
         """
         ## SETUP
         self._od_filepaths = od_filepaths
@@ -405,12 +407,17 @@ class CUEexperiments:
             deepwell_volumes = [deepwell_volumes] * self.n_experiments
         self._deepwell_volumes = tuple(deepwell_volumes)
         
-        # Check lengths of dilutions, control_wells, culture_volumes, and deepwell_volumes
-        for attr in ('_dilutions', '_control_wells', '_culture_volumes', '_deepwell_volumes'):
+        if isinstance(names, type(None)):
+            names = range(self.n_experiments)
+        self.names = tuple(names)
+        
+        # Check lengths of dilutions, control_wells, culture_volumes, deepwell_volumes, and names
+        for attr in ('_dilutions', '_control_wells', '_culture_volumes', '_deepwell_volumes', 'names'):
             check_len_n(self, attr, self.n_experiments)
         
         self._bad_wells_od = tuple(bad_wells_od.get(i) for i in range(self.n_experiments))
         self._bad_wells_microresp = tuple(bad_wells_microresp.get(i) for i in range(self.n_experiments))
+        
         
         ## READ IN DATA
         self.pre_ods = None
@@ -420,7 +427,9 @@ class CUEexperiments:
         self._read_excel_files()
         
         ## GENERATE CUE COLLECTION
-    
+        self.cues = None
+        self._create_cues()
+        
     def _read_excel_files(self):
         for datatype in ['od', 'microresp']:
             filepath_attr = f'_{datatype}_filepaths'
@@ -441,6 +450,22 @@ class CUEexperiments:
             setattr(self, post_plates_attr, post)
             
     def _create_cues(self):
+        cues = []
         for pre_od, post_od, pre_microresp, post_microresp, dilution, control_wells, culture_volume, deepwell_volume, bad_wells_od, bad_wells_microresp, name in\
-            zip(self.pre_ods, self.post_ods, self.pre_microresps, self.post_microresps, self._dilutions, self._control_wells, self._culture_volumes, self._deepwell_volumes, self._bad_wells_od, self._bad_wells_microresp, range(self.n_experiments)):
-            pass
+            zip(self.pre_ods, self.post_ods, self.pre_microresps, self.post_microresps, self._dilutions, self._control_wells, self._culture_volumes, self._deepwell_volumes, self._bad_wells_od, self._bad_wells_microresp, self.names):
+            
+            kwargs = dict(pre_od=pre_od, 
+            post_od=post_od, 
+            pre_microresp=pre_microresp, 
+            post_microresp=post_microresp, 
+            dilution=dilution, 
+            control_wells=control_wells, 
+            culture_volume=culture_volume, 
+            deepwell_volume=deepwell_volume, 
+            bad_wells_od=bad_wells_od, 
+            bad_wells_microresp=bad_wells_microresp, 
+            name=name
+            )
+            cue = CUEexperiment(**kwargs)
+            cues.append(cue)
+        self.cues = tuple(cues)

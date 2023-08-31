@@ -245,6 +245,19 @@ class testCUEexperiments(TestCase):
             CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, deepwell_volumes=provided_vols)
         self.assertEqual(f'"_deepwell_volumes" must be of length {self.n_experiments}', str(context.exception))
     
+    def test_names(self):
+        expected_names = (0, 1)
+        self.assertEqual(expected_names, self.cues.names)
+        
+        provided_names = ['a', 'b']
+        cues = CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, names=provided_names)
+        self.assertEqual(tuple(provided_names), cues.names)
+        
+        incorrect_names = ['a', 'b', 'c']
+        with self.assertRaises(ValueError) as context:
+            CUEexperiments(self.od_filepaths, self.microresp_filepaths, self.dilutions, self.control_wells, names=incorrect_names)
+        self.assertEqual(f'"names" must be of length {self.n_experiments}', str(context.exception))
+        
     def test_bad_wells(self):
         bad_od_wells = {1: [('A', 1), ('B', 2)]}
         bad_microresp_wells = {0: [('C', 3)]}
@@ -284,5 +297,5 @@ class testCUEexperiments(TestCase):
             post_microresp_eval = post_microresp_df.eq(self.cues.post_microresps[experiment].df).all().all()
             self.assertTrue(post_microresp_eval)
             
-    
-    
+    def test_cues(self):
+        pass
