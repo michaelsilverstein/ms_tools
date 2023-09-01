@@ -51,7 +51,7 @@ class Plate:
     Excel plate reader data for single plate spectrophotometer reading
     """
 
-    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type='columns', row_type='row', plate_format=96, find_idx=True):
+    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type='column', row_type='row', plate_format=96, find_idx=True):
         """
         filepath: Path to plate reader Excel file
         sheet_name: Name of sheet to reader from `filepath`. Must be specified.
@@ -266,6 +266,9 @@ class CUEexperiment:
         
         # Compute CUE
         self._computeCUE()
+        
+        # Stack data
+        self._stack_data()
 
     def _removeBadWells(self):
         # Remove bad wells
@@ -358,6 +361,16 @@ class CUEexperiment:
         """
         self._cue_no_null = 1 / (1 + self._respirationC / self._delta_biomassC)
         self.cue = 1 / (1 + self.respirationC / self.delta_biomassC)
+        
+    def _stack_data(self, attrs=['_delta_biomassC', '_respirationC']):
+        "Create a stacked dataframe, `.stacked` with CUE and those listed in `attrs`"
+        # Stack CUE
+        cue_stacked = self.cue.stack().rename('cue')
+        # Stack provided attributes
+        attrs_stacked = pd.concat([getattr(self, attr).stack().rename(attr) for attr in attrs], axis=1)
+        stacked = pd.concat([cue_stacked, attrs_stacked], axis=1)
+        stacked = stacked.reindex(stacked.index.sort_values())
+        self.stacked = stacked
         
     def __repr__(self) -> str:
         return self.cue.__repr__()

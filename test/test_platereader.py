@@ -1,5 +1,6 @@
 from unittest import TestCase
 import numpy as np
+import pandas as pd
 
 from ms_tools.platereader import Plate, CUEexperiment, CUEexperiments, od2biomassC, culture_volume, deepwell_volume
 
@@ -142,7 +143,25 @@ class testCUEexperiment(TestCase):
                     self.assertTrue(np.isnan(value))
                 else:
                     self.assertTrue(np.isfinite(value))
-                    
+    
+    def test_cue_less_than_1(self):
+        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
+        self.assertTrue(cue.cue.stack().le(1).all())
+        
+    def test_stack_data(self):
+        cue = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
+        stacked = cue.stacked
+        
+        rows = list('ABCDEFGH')
+        columns = range(1, 13)
+        expected_index = pd.MultiIndex.from_product([rows, columns])
+        self.assertTrue(expected_index.equals(stacked.index))
+        
+        unstacked = stacked.unstack('column')
+        self.assertTrue(cue.cue.equals(unstacked.cue))
+        self.assertTrue(cue._delta_biomassC.equals(unstacked._delta_biomassC))
+        self.assertTrue(cue._respirationC.sort_index(axis=1).equals(unstacked._respirationC))
+
 class testCUEexperiments(TestCase):
     def setUp(self) -> None:
         self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx', 'test/test_data/DE.Transfer3.xlsx']
