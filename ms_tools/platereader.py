@@ -19,9 +19,9 @@ from ms_tools.utils import check_len_n, check_n_sheets
 # warnings.simplefilter('module', NegativeBiomassWarning)
 # warnings.simplefilter('module', NegativeMicrorespWarning)
         
-assumed_background_OD = 0.04
-deepwell_volume = 1200
-culture_volume = 500
+_assumed_background_OD = 0.04
+_deepwell_volume = 1200
+_culture_volume = 500
 
 def od2biomassC(od, volume: float):
     """
@@ -188,14 +188,14 @@ class Plate:
         return (self.df.equals(other.df))
 
 class CUEexperiment:
-    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=culture_volume, deepwell_volume: float=deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None, name: str=None):
+    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=_culture_volume, deepwell_volume: float=_deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None, name: str=None):
         f"""
         CUE Experiment containing data pertaining to the specified metric
         | {{pre, post}}_{{od, microresp}}: Plate objects for pre and post measurements
         | dilution: Dilution factor for biomass OD measurement
         | culture_volume: The volume (uL) of culture in each MicroResp well. Default: {culture_volume} uL
         | deepwell_volume: The volume (uL) of each well in the deepwell plate. Default: {deepwell_volume} uL
-        | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default: {assumed_background_OD} as background OD.
+        | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default: {_assumed_background_OD} as background OD.
         | bad_wells_{{od, microresp}}: Wells to remove from each experiment in the form for `Plate.removeWells()`
         | name: Experiment name
         
@@ -236,7 +236,7 @@ class CUEexperiment:
         self._dilution = dilution
         self._culture_volume = culture_volume
         self._deepwell_volume = deepwell_volume
-        self._assumed_background_od = assumed_background_OD
+        self._assumed_background_od = _assumed_background_OD
         if control_wells is None:
             # warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
             control_wells = []
@@ -367,7 +367,14 @@ class CUEexperiment:
         # Stack CUE
         cue_stacked = self.cue.stack().rename('cue')
         # Stack provided attributes
-        attrs_stacked = pd.concat([getattr(self, attr).stack().rename(attr) for attr in attrs], axis=1)
+        attrs_stacked_data = []
+        for attr in attrs:
+            val = getattr(self, attr)
+            if isinstance(val, Plate):
+                val = val.df
+            val_stacked = val.stack().rename(attr)
+            attrs_stacked_data.append(val_stacked)
+        attrs_stacked = pd.concat(attrs_stacked_data, axis=1)
         stacked = pd.concat([cue_stacked, attrs_stacked], axis=1)
         stacked = stacked.reindex(stacked.index.sort_values())
         self.stacked = stacked
@@ -379,7 +386,7 @@ class CUEexperiment:
         return self.cue.equals(other.cue)
     
 class CUEexperiments:
-    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=culture_volume, deepwell_volumes: float=deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}, names: List[str]=None):
+    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=_culture_volume, deepwell_volumes: float=_deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}, names: List[str]=None):
         f"""A collection of `CUEexperiment`s
 
         Inputs:
@@ -387,11 +394,11 @@ class CUEexperiments:
             a sheet for T0 (sheet 0) and T1 (sheet 1).
         dilutions: Either one number to use the same dilution for all OD measurements or a list for each
         control_wells: Wells for background 
-            - None (default): Set background OD to {assumed_background_OD}
+            - None (default): Set background OD to {_assumed_background_OD}
             - List of tuples: Use list of tuples for each well for all experiments, 
             - List of lists of tuples: Use different control wells for each experiment
-        culture_volumes (float, optional): Either one number or a list for each experiment. Default: {culture_volume} uL.
-        deepwell_volumes (float, optional): Either one number or a list for each experiment. Default: {deepwell_volume} uL.
+        culture_volumes (float, optional): Either one number or a list for each experiment. Default: {_culture_volume} uL.
+        deepwell_volumes (float, optional): Either one number or a list for each experiment. Default: {_deepwell_volume} uL.
         bad_wells_{{od, microresp}}: Dictionary indicating wells to remove for OD and microresp (ex. {{0: [('A', 2), ('B', 1)]}}). Zero indexed!
         names: A list of names for each experiment or automatically name 0 through N (default).
         """
@@ -450,6 +457,10 @@ class CUEexperiments:
         self.cues = None
         self._create_cues()
         
+        # Stack data
+        self.stacked = None
+        self._stack_data()
+        
     def _read_excel_files(self):
         for datatype in ['od', 'microresp']:
             filepath_attr = f'_{datatype}_filepaths'
@@ -491,9 +502,15 @@ class CUEexperiments:
         self.cues = tuple(cues)
         
         
-    def stack_data(self):
-        "Return a stacked dataframe for each datatype"
-        # TODO: helpful utility function
-        pass
-        
-        
+    def _stack_data(self, attrs=['_delta_biomassC', '_respirationC']):
+        "Return a stacked dataframe with `attrs` and cue for each experiment"
+        stacked_data = []
+        for cue in self.cues:
+            # If provided attributes aren't in stacked, add them
+            if not pd.Index(attrs).isin(cue.stacked.columns).all():
+                cue._stack_data(attrs)
+            stacked = cue.stacked.reset_index()
+            stacked['experiment'] = cue.name
+            stacked_data.append(stacked)
+        stacked = pd.concat(stacked_data)
+        self.stacked = stacked

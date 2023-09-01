@@ -2,7 +2,7 @@ from unittest import TestCase
 import numpy as np
 import pandas as pd
 
-from ms_tools.platereader import Plate, CUEexperiment, CUEexperiments, od2biomassC, culture_volume, deepwell_volume
+from ms_tools.platereader import Plate, CUEexperiment, CUEexperiments, od2biomassC, _culture_volume, _deepwell_volume
 
 class testPlate(TestCase):
     def setUp(self):
@@ -162,6 +162,13 @@ class testCUEexperiment(TestCase):
         self.assertTrue(cue._delta_biomassC.equals(unstacked._delta_biomassC))
         self.assertTrue(cue._respirationC.sort_index(axis=1).equals(unstacked._respirationC))
 
+        # Test specifying attributes
+        cue._stack_data(['_delta_biomassC', '_pre_od'])
+        unstacked = cue.stacked.unstack('column')
+        self.assertTrue(cue._delta_biomassC.equals(unstacked._delta_biomassC))
+        self.assertTrue(cue._pre_od.df.equals(unstacked._pre_od))
+        
+        
 class testCUEexperiments(TestCase):
     def setUp(self) -> None:
         self.od_filepaths = ['test/test_data/DE.Transfer1.xlsx', 'test/test_data/DE.Transfer3.xlsx']
@@ -222,7 +229,7 @@ class testCUEexperiments(TestCase):
         
     def test_culture_volumes(self):
         # Default: No volume provided
-        expected_volumes = tuple([culture_volume] * self.n_experiments)
+        expected_volumes = tuple([_culture_volume] * self.n_experiments)
         self.assertEqual(expected_volumes, self.cues._culture_volumes)
         
         # Providing one volume
@@ -244,7 +251,7 @@ class testCUEexperiments(TestCase):
 
     def test_deepwell_volumes(self):
         # Default: No volume provided
-        expected_volumes = tuple([deepwell_volume] * self.n_experiments)
+        expected_volumes = tuple([_deepwell_volume] * self.n_experiments)
         self.assertEqual(expected_volumes, self.cues._deepwell_volumes)
         
         # Providing one volume
@@ -309,3 +316,12 @@ class testCUEexperiments(TestCase):
         expected_cues = tuple([CUEexperiment(pre_od, post_od, pre_microresp, post_microresp, 5, self.control_wells) for pre_od, post_od, pre_microresp, post_microresp in zip(pre_ods, post_ods, pre_microresps, post_microresps)])
         
         self.assertEqual(expected_cues, self.cues.cues)
+        
+    def test_stacked(self):
+        expected_stacked_data = [cue.stacked for cue in self.cues.cues]
+        
+        for experiment, expected in zip([0, 1], expected_stacked_data):
+            df = self.cues.stacked[self.cues.stacked.experiment.eq(experiment)].drop('experiment', axis=1)
+            self.assertTrue(expected.reset_index().equals(df))
+            
+        self.cues._stack_data(['_delta_biomassC'])
