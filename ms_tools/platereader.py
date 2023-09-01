@@ -7,11 +7,21 @@ import numpy as np
 from typing import List, Tuple
 import warnings
 
-class NegativeBiomassWarning(UserWarning):
-    pass
+from ms_tools.utils import check_len_n, check_n_sheets
 
-class NegativeMicrorespWarning(UserWarning):
-    pass
+# class NegativeBiomassWarning(UserWarning):
+#     pass
+
+# class NegativeMicrorespWarning(UserWarning):
+#     pass
+
+# warnings.simplefilter('module', UserWarning)
+# warnings.simplefilter('module', NegativeBiomassWarning)
+# warnings.simplefilter('module', NegativeMicrorespWarning)
+        
+_assumed_background_OD = 0.04
+_deepwell_volume = 1200
+_culture_volume = 500
 
 def od2biomassC(od, volume: float):
     """
@@ -33,12 +43,15 @@ def od2biomassC(od, volume: float):
 
     return biomass_c
 
+def single2list(obj, n):
+    "Return an object repeated in a list"
+
 class Plate:
     """
     Excel plate reader data for single plate spectrophotometer reading
     """
 
-    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type=None, row_type=None, plate_format=96, find_idx=True):
+    def __init__(self, filepath, sheet_name=0, measurement_name='measurement', columns=None, rows=None, column_type='column', row_type='row', plate_format=96, find_idx=True):
         """
         filepath: Path to plate reader Excel file
         sheet_name: Name of sheet to reader from `filepath`. Must be specified.
@@ -148,7 +161,7 @@ class Plate:
         """
         df = self.df
         for well_idx in wells:
-            df.at[well_idx] = np.nan
+            df.at[well_idx] = None
 
         self.removed_wells.extend(wells)
 
@@ -169,18 +182,23 @@ class Plate:
 
     def __repr__(self) -> str:
         return self.df.__repr__()
+    
+    def __eq__(self, other) -> bool:
+        # Just check that dataframes are equal
+        return (self.df.equals(other.df))
 
 class CUEexperiment:
-    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=500, deepwell_volume: float=2000, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None):
-        """
+    def __init__(self, pre_od: Plate, post_od: Plate, pre_microresp: Plate, post_microresp: Plate, dilution: int, control_wells: List[Tuple]=None, culture_volume: float=_culture_volume, deepwell_volume: float=_deepwell_volume, bad_wells_od: List[Tuple]=None, bad_wells_microresp: List[Tuple]=None, name: str=None):
+        f"""
         CUE Experiment containing data pertaining to the specified metric
-        | {pre, post}_{od, microresp}: Plate objects for pre and post measurements
+        | {{pre, post}}_{{od, microresp}}: Plate objects for pre and post measurements
         | dilution: Dilution factor for biomass OD measurement
-        | culture_volume: The volume (uL) of culture in each MicroResp well. (Default: 500uL)
-        | deepwell_volume: The volume (uL) of each well in the deepwell plate
-        | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default is all wells in row H.
-        | bad_wells_{od, microresp}: Wells to remove from each experiment in the form for `Plate.removeWells()`
-
+        | culture_volume: The volume (uL) of culture in each MicroResp well. Default: {culture_volume} uL
+        | deepwell_volume: The volume (uL) of each well in the deepwell plate. Default: {deepwell_volume} uL
+        | control_wells: List of wells that are cell-free controls for computing OD background, ex: [('A', 1), ('B', 2)]. Default: {_assumed_background_OD} as background OD.
+        | bad_wells_{{od, microresp}}: Wells to remove from each experiment in the form for `Plate.removeWells()`
+        | name: Experiment name
+        
         Computes CUE according to Smith et al. 2021, Ecology Letters (doi/10.1111/ele.13840)
 
         Growth rate:
@@ -218,9 +236,9 @@ class CUEexperiment:
         self._dilution = dilution
         self._culture_volume = culture_volume
         self._deepwell_volume = deepwell_volume
-        self._assumed_background_od = 0.04
+        self._assumed_background_od = _assumed_background_OD
         if control_wells is None:
-            warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
+            # warnings.warn(f'No control wells listed. Background OD will be assumed to be {self._assumed_background_od}.')
             control_wells = []
         self._control_wells = control_wells
         self._pre_od = pre_od
@@ -229,6 +247,7 @@ class CUEexperiment:
         self._post_microresp = post_microresp
         self._bad_wells_od = bad_wells_od
         self._bad_wells_microresp = bad_wells_microresp
+        self.name = name
         
         self._negative_delta_biomass_wells = []
         self._negative_delta_microresp_wells = []
@@ -247,6 +266,9 @@ class CUEexperiment:
         
         # Compute CUE
         self._computeCUE()
+        
+        # Stack data
+        self._stack_data()
 
     def _removeBadWells(self):
         # Remove bad wells
@@ -279,18 +301,17 @@ class CUEexperiment:
         self.delta_biomassC = self._delta_biomassC.copy()
         
         # Check for negative delta biomass
-        warnings.simplefilter('once', NegativeBiomassWarning)
         for r in self._delta_biomassC.index:
             for c in self._delta_biomassC.columns:
                 well = (r, c)
                 if well not in self._control_wells:
                     value = self._delta_biomassC.at[well]
                     if value < 0:
-                        warnings.warn('Negative biomass detected in at least one well. All cases set to null.')
+                        # warnings.warn('Negative biomass detected in at least one well. All cases set to null.')
                         # Document negative well
                         self._negative_delta_biomass_wells.append(well)
                         # Set value as null
-                        self.delta_biomassC.at[well] = np.nan
+                        self.delta_biomassC.at[well] = None
 
     def _computeRespirationC(self):
         "Convert MicroResp absorbance to respiration C according to manual pg. 15-16"
@@ -316,18 +337,17 @@ class CUEexperiment:
         
         # Check instances where post > pre (absorbance values decrease with respiration)
         negative_microresp = self._post_microresp.df.gt(self._pre_microresp.df)
-        warnings.simplefilter('once', NegativeMicrorespWarning)
         for r in negative_microresp.index:
             for c in negative_microresp.columns:
                 well = (r, c)
                 if well not in self._control_wells:
                     value = negative_microresp.at[well]
                     if value:
-                        warnings.warn('Negative MicroResp detected in at least one well. All cases set to null.')
+                        # warnings.warn('Negative MicroResp detected in at least one well. All cases set to null.')
                         # Document negative well
                         self._negative_delta_microresp_wells.append(well)
                         # Set value as null
-                        self.respirationC.at[well] = np.nan
+                        self.respirationC.at[well] = None
 
     @property
     def _negative_cue_wells(self):
@@ -342,59 +362,155 @@ class CUEexperiment:
         self._cue_no_null = 1 / (1 + self._respirationC / self._delta_biomassC)
         self.cue = 1 / (1 + self.respirationC / self.delta_biomassC)
         
+    def _stack_data(self, attrs=['_delta_biomassC', '_respirationC']):
+        "Create a stacked dataframe, `.stacked` with CUE and those listed in `attrs`"
+        # Stack CUE
+        cue_stacked = self.cue.stack().rename('cue')
+        # Stack provided attributes
+        attrs_stacked_data = []
+        for attr in attrs:
+            val = getattr(self, attr)
+            if isinstance(val, Plate):
+                val = val.df
+            val_stacked = val.stack().rename(attr)
+            attrs_stacked_data.append(val_stacked)
+        attrs_stacked = pd.concat(attrs_stacked_data, axis=1)
+        stacked = pd.concat([cue_stacked, attrs_stacked], axis=1)
+        stacked = stacked.reindex(stacked.index.sort_values())
+        self.stacked = stacked
+        
     def __repr__(self) -> str:
         return self.cue.__repr__()
 
-    # def computeDeltaBiomass(self):
-    #     "Compute the change in biomass from pre to post"
-    #     # Change in OD
-    #     self.delta_od = self._post_od_adjusted - self._pre_od_adjusted
-
-    #     # Change in biomass
-    #     # https://bionumbers.hms.harvard.edu/bionumber.aspx?s=n&v=3&id=108127
-    #     vol = 150e-6
-    #     # in ug
-    #     self.delta_biomass = .56 * self.delta_od * vol * 1e6
-
-    #     # Change in biomass -> C
-    #     # https://bionumbers.hms.harvard.edu/bionumber.aspx?id=100649&ver=8&trm=percent+carbon+e+coli&org=
-    #     self.delta_biomass_c = self.delta_biomass * .47
+    def __eq__(self, other) -> bool:
+        return self.cue.equals(other.cue)
     
-    # def computeDeltaCO2(self):
-    #     "Compute change in CO2 from pre to post"
-        
-    #     micro_pre, micro_post = self._pre_microresp.df, self._post_microresp.df
-        
-    #     # Normalize
-    #     self._micro_background = micro_pre.mean().mean()
-    #     self._micro_normalized = micro_post / micro_pre * self._micro_background
+class CUEexperiments:
+    def __init__(self, od_filepaths: list, microresp_filepaths: list, dilutions, control_wells=None, culture_volumes: float=_culture_volume, deepwell_volumes: float=_deepwell_volume, bad_wells_od: dict={}, bad_wells_microresp: dict={}, names: List[str]=None):
+        f"""A collection of `CUEexperiment`s
 
-    #     # % CO2
-    #     pct_co2 = -.2265 - 1.606/(1 - 6.771 * self._micro_normalized)
-    #     # Reverse column names (because of how microresp is done, columns are flipped)
-    #     self.pct_co2 = pct_co2.rename(columns=dict(zip(pct_co2.columns, reversed(pct_co2.columns))))
+        Inputs:
+        {{od, microresp}}_filepaths (list): A list of Excel filepaths for {{od, microresp}} where each workbook contains 
+            a sheet for T0 (sheet 0) and T1 (sheet 1).
+        dilutions: Either one number to use the same dilution for all OD measurements or a list for each
+        control_wells: Wells for background 
+            - None (default): Set background OD to {_assumed_background_OD}
+            - List of tuples: Use list of tuples for each well for all experiments, 
+            - List of lists of tuples: Use different control wells for each experiment
+        culture_volumes (float, optional): Either one number or a list for each experiment. Default: {_culture_volume} uL.
+        deepwell_volumes (float, optional): Either one number or a list for each experiment. Default: {_deepwell_volume} uL.
+        bad_wells_{{od, microresp}}: Dictionary indicating wells to remove for OD and microresp (ex. {{0: [('A', 2), ('B', 1)]}}). Zero indexed!
+        names: A list of names for each experiment or automatically name 0 through N (default).
+        """
+        ## SETUP
+        self._od_filepaths = od_filepaths
+        self._microresp_filepaths = microresp_filepaths
+        if len(self._od_filepaths) != len(self._microresp_filepaths):
+            raise ValueError('The same number of OD and MicroResp filepaths must be provided')
+        self.n_experiments = len(self._od_filepaths)
 
-    #     # Mass C from Microresp manual
+        if isinstance(dilutions, (int, float)):
+            dilutions = [dilutions] * self.n_experiments
+        self._dilutions = tuple(dilutions)
         
-    #     # Estimate headspace
-    #     vol = (1 + .15) - .3
-    #     temp = 25
-    #     # ug of C
-    #     self.mass_co2 = self.pct_co2 * vol * (44/22.4) * (12/44) * (273/(273+temp))
+        # Handle None control_wells
+        if isinstance(control_wells, type(None)):
+            control_wells = [control_wells] * self.n_experiments
+        # Check for experiment-specific control wells
+        controls_lists_of_lists = all(isinstance(el, list) for el in control_wells)
+        if controls_lists_of_lists & (len(control_wells) != self.n_experiments):
+            raise ValueError('If different `control_wells` are provided for each experiment there must be only one for each experiment')
+        # Check for single list
+        controls_single_list = all(isinstance(el, tuple) for el in control_wells)
+        if controls_single_list:
+            control_wells = [control_wells] * self.n_experiments
+        self._control_wells = tuple(control_wells)
         
-    # def computeCUE(self):
-    #     "Compute CUE from change in biomass and CO2"
+        if isinstance(culture_volumes, (int, float)):
+            culture_volumes = [culture_volumes] * self.n_experiments
+        self._culture_volumes = tuple(culture_volumes)
         
-    #     if not hasattr(self, 'delta_biomass_c'):
-    #         self.computeDeltaBiomass()
+        if isinstance(deepwell_volumes, (int, float)):
+            deepwell_volumes = [deepwell_volumes] * self.n_experiments
+        self._deepwell_volumes = tuple(deepwell_volumes)
         
-    #     if not hasattr(self, 'mass_co2'):
-    #         self.computeDeltaCO2()
+        if isinstance(names, type(None)):
+            names = range(self.n_experiments)
+        self.names = tuple(names)
         
-    #     delta_biomass_c, mass_co2 = self.delta_biomass_c, self.mass_co2
+        # Check lengths of dilutions, control_wells, culture_volumes, deepwell_volumes, and names
+        for attr in ('_dilutions', '_control_wells', '_culture_volumes', '_deepwell_volumes', 'names'):
+            check_len_n(self, attr, self.n_experiments)
         
-    #     # Remove negative values
-    #     for df in delta_biomass_c, mass_co2:
-    #         df[df.lt(0)] = np.nan
+        self._bad_wells_od = tuple(bad_wells_od.get(i) for i in range(self.n_experiments))
+        self._bad_wells_microresp = tuple(bad_wells_microresp.get(i) for i in range(self.n_experiments))
         
-    #     self.cue = delta_biomass_c / (delta_biomass_c + mass_co2)
+        
+        ## READ IN DATA
+        self.pre_ods = None
+        self.post_ods = None
+        self.pre_microresps = None
+        self.post_microresps = None
+        self._read_excel_files()
+        
+        ## GENERATE CUE COLLECTION
+        self.cues = None
+        self._create_cues()
+        
+        # Stack data
+        self.stacked = None
+        self._stack_data()
+        
+    def _read_excel_files(self):
+        for datatype in ['od', 'microresp']:
+            filepath_attr = f'_{datatype}_filepaths'
+            filepaths = getattr(self, filepath_attr)
+            pre, post = [], []
+            for filepath in filepaths:
+                check_n_sheets(filepath, 2)
+                for sheet, l in zip([0, 1], [pre, post]):
+                    p = Plate(filepath, sheet, datatype)
+                    l.append(p)
+
+            pre = tuple(pre)
+            pre_plates_attr = f'pre_{datatype}s'
+            setattr(self, pre_plates_attr, pre)
+            
+            post = tuple(post)
+            post_plates_attr = f'post_{datatype}s'
+            setattr(self, post_plates_attr, post)
+            
+    def _create_cues(self):
+        cues = []
+        for pre_od, post_od, pre_microresp, post_microresp, dilution, control_wells, culture_volume, deepwell_volume, bad_wells_od, bad_wells_microresp, name in\
+            zip(self.pre_ods, self.post_ods, self.pre_microresps, self.post_microresps, self._dilutions, self._control_wells, self._culture_volumes, self._deepwell_volumes, self._bad_wells_od, self._bad_wells_microresp, self.names):
+            
+            kwargs = dict(pre_od=pre_od, 
+            post_od=post_od, 
+            pre_microresp=pre_microresp, 
+            post_microresp=post_microresp, 
+            dilution=dilution, 
+            control_wells=control_wells, 
+            culture_volume=culture_volume, 
+            deepwell_volume=deepwell_volume, 
+            bad_wells_od=bad_wells_od, 
+            bad_wells_microresp=bad_wells_microresp, 
+            name=name
+            )
+            cue = CUEexperiment(**kwargs)
+            cues.append(cue)
+        self.cues = tuple(cues)
+        
+        
+    def _stack_data(self, attrs=['_delta_biomassC', '_respirationC']):
+        "Return a stacked dataframe with `attrs` and cue for each experiment"
+        stacked_data = []
+        for cue in self.cues:
+            # If provided attributes aren't in stacked, add them
+            if not pd.Index(attrs).isin(cue.stacked.columns).all():
+                cue._stack_data(attrs)
+            stacked = cue.stacked.reset_index()
+            stacked['experiment'] = cue.name
+            stacked_data.append(stacked)
+        stacked = pd.concat(stacked_data)
+        self.stacked = stacked
