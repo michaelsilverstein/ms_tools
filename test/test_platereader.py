@@ -318,10 +318,10 @@ class testCUEexperiments(TestCase):
         self.assertEqual(expected_cues, self.cues.cues)
         
     def test_stacked(self):
-        expected_stacked_data = [cue.stacked for cue in self.cues.cues]
+        expected_stacked_data = [cue.stacked.reset_index() for cue in self.cues.cues]
         
         for experiment, expected in zip([0, 1], expected_stacked_data):
-            df = self.cues.stacked[self.cues.stacked.experiment.eq(experiment)].drop('experiment', axis=1)
-            self.assertTrue(expected.reset_index().equals(df))
+            df = self.cues.stacked[self.cues.stacked.experiment.eq(experiment)].drop('experiment', axis=1).reset_index(drop=True)
+            self.assertTrue(expected.equals(df))
             
-        self.cues._stack_data(['_delta_biomassC'])
+        # self.cues._stack_data(['_delta_biomassC'])

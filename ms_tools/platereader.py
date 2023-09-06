@@ -512,5 +512,5 @@ class CUEexperiments:
             stacked = cue.stacked.reset_index()
             stacked['experiment'] = cue.name
             stacked_data.append(stacked)
-        stacked = pd.concat(stacked_data)
+        stacked = pd.concat(stacked_data).reset_index(drop=True)
         self.stacked = stacked
