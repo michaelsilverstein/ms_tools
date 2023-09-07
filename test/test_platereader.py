@@ -324,4 +324,5 @@ class testCUEexperiments(TestCase):
             df = self.cues.stacked[self.cues.stacked.experiment.eq(experiment)].drop('experiment', axis=1).reset_index(drop=True)
             self.assertTrue(expected.equals(df))
             
-        # self.cues._stack_data(['_delta_biomassC'])
+        self.cues._stack_data(['_delta_biomassC', '_pre_od'])
+        self.assertFalse('_respirationC' in self.cues.stacked.columns)
