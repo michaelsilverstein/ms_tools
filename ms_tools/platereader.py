@@ -283,8 +283,8 @@ class CUEexperiment:
         self._pre_od_background = self._assumed_background_od
         self._post_od_background = self._assumed_background_od
         if self._control_wells:
-            self._pre_od_background = self._pre_od.wellApply(self._control_wells, np.mean)
-            self._post_od_background = self._post_od.wellApply(self._control_wells, np.mean)
+            self._pre_od_background = self._pre_od.wellApply(self._control_wells, np.nanmean)
+            self._post_od_background = self._post_od.wellApply(self._control_wells, np.nanmean)
         
         # Adjust OD based on empty controls
         od_pre, od_post = self._pre_od.df, self._post_od.df

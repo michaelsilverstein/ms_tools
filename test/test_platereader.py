@@ -106,6 +106,10 @@ class testCUEexperiment(TestCase):
         # Underscored delta should keep actual delta (no nulls)
         self.assertFalse(cue_with_control_wells._delta_biomassC.isnull().any().any())
         
+        # Removing control well should not result in all nulls
+        cue_with_a_bad_control_well = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5, control_wells, bad_wells_od=[('G', 1)])
+        self.assertFalse(cue_with_a_bad_control_well.cue.isnull().all().all())
+        
     def test_negative_microresp(self):
         # All CUE values as expected with original data
         cue_unedited = CUEexperiment(self.pre_od_plate, self.post_od_plate, self.pre_microresp_plate, self.post_microresp_plate, 5)
