@@ -1,7 +1,7 @@
 "ML helper functions"
 
 from sklearn.model_selection import cross_val_predict, LeaveOneOut
-import scipy.stats as sps
+from sklearn.metrics import r2_score
 
 def loo_score(estimator, X, y, return_predictions=False, cv=LeaveOneOut(), **kwargs):
     """
@@ -18,7 +18,7 @@ def loo_score(estimator, X, y, return_predictions=False, cv=LeaveOneOut(), **kwa
     | All other keyword arguments are passed to `cross_val_predict()`
     """
     loo_y = cross_val_predict(estimator, X, y, cv=cv, **kwargs)
-    r2 = sps.pearsonr(y, loo_y)[0] ** 2
+    r2 = r2_score(y, loo_y)
     if return_predictions:
         return_this = r2, loo_y
     else:
