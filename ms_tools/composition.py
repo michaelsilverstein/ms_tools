@@ -67,6 +67,29 @@ def rarefaction_curve(x, step_size=10):
     
     return steps, richnesses
 
+def aitchison(x, y, pseudo=1, subset=True):
+    """
+    Compute the Aitchison distance on vectors x and y after adding a pseudocount to allow for log transformation.
+    If subset = True, subset x and y to entries that are present in either or both
+    Compatible with scipy.spatial.distance.pdist
+    """
+    x = np.array(x.copy())
+    y = np.array(y.copy())
+    
+    if subset:
+        union = (x > 0) | (y > 0)
+        x = x[union]
+        y = y[union]
+    
+    # Add pseudo count
+    x += pseudo
+    y += pseudo
+    
+    # Perform clr transform
+    x_clr = clr(x)
+    y_clr = clr(y)
+    return euclidean(x_clr, y_clr)
+
 def overlap_aitchison(x, y):
     """Compute Aitchison distance of overlap between `x` and `y` with metric of choice
 
