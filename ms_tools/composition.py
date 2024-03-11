@@ -77,7 +77,7 @@ def _clr(x):
     """
     lmat = np.log(x)
     gm = lmat.mean(axis=-1, keepdims=True)
-    return (lmat - gm).squeeze()
+    return lmat - gm
 
 def aitchison(x, y, pseudo=1, subset=True):
     """
