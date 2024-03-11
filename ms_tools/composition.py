@@ -1,7 +1,7 @@
 "Compositional data utilities"
 
 import numpy as np
-from skbio.stats.composition import clr
+# from skbio.stats.composition import clr
 from skbio.stats import subsample_counts
 from scipy.spatial.distance import euclidean, jensenshannon
 
@@ -67,6 +67,18 @@ def rarefaction_curve(x, step_size=10):
     
     return steps, richnesses
 
+def _clr(x):
+    """
+    Centered log-ratio function from skbio, but can handle vectors of size 1.
+    See issue where I discuss with developers here: https://github.com/scikit-bio/scikit-bio/issues/1918
+
+    Original function here:
+    https://github.com/scikit-bio/scikit-bio/blob/1641183852714733f7bd25ae3fbfda2474e6a01b/skbio/stats/composition.py#L424
+    """
+    lmat = np.log(x)
+    gm = lmat.mean(axis=-1, keepdims=True)
+    return (lmat - gm).squeeze()
+
 def aitchison(x, y, pseudo=1, subset=True):
     """
     Compute the Aitchison distance on vectors x and y after adding a pseudocount to allow for log transformation.
@@ -86,8 +98,8 @@ def aitchison(x, y, pseudo=1, subset=True):
     y += pseudo
     
     # Perform clr transform
-    x_clr = clr(x)
-    y_clr = clr(y)
+    x_clr = _clr(x)
+    y_clr = _clr(y)
     return euclidean(x_clr, y_clr)
 
 def overlap_aitchison(x, y):
