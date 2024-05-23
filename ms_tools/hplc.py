@@ -21,7 +21,7 @@ class ch_sample:
         self.metadata = ch.metadata
         self.date = ch.metadata['date']
         self.sample = ch.metadata['notebook']
-        self.data = np.array([ch.time, ch.riu])
+        self.data = np.array([self.time, self.riu])
         
     def __repr__(self) -> str:
         return f'.ch file "{self.path}" for sample "{self.sample}"'
