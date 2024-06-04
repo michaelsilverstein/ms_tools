@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matrix, group_sparsity, noise):
+def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matrix, group_sparsity=.5, noise=0):
     """Generate a structured binary matrix with specified associations between groups in rows and columns
     with tunable amounts of noise for group membership
 
@@ -13,7 +13,9 @@ def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matri
             the rows and columns.
         group_sparsity (float): The probability of belonging to an associated group. A `group_sparsity`
         of 0 will result in no grouped entries and a `group_sparsity` of 1 will sample all group entries.
+            Default = 0.5
         noise (float): The probability of non-group entries.
+            Default = 0.
         
     Returns:
         x (array): A structured binary matrix
