@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matrix, group_sparsity=.5, noise=0):
+def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matrix, group_sparsity=.5, noise=0, row_group_name=None, col_group_name=None, row_name=None, col_name=None):
     """Generate a structured binary matrix with specified associations between groups in rows and columns
     with tunable amounts of noise for group membership
 
@@ -21,6 +21,7 @@ def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matri
         x (array): A structured binary matrix
     """
     
+    "Inputs"
     group_sparsity = 1 - group_sparsity
     
     n_groups_col, n_groups_row = map(len, (col_group_sizes, row_group_sizes))
@@ -29,6 +30,15 @@ def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matri
 
     if association_matrix.shape != (n_groups_row, n_groups_col):
         raise ValueError(f'Association matrix shape must match x and y group sizes {(n_groups_col, n_groups_row)}')
+    
+    if not row_group_name:
+        row_group_name = 'row_group'
+    if not col_group_name:
+        col_group_name = 'col_group'
+    if not row_name:
+        row_name = 'row'
+    if not col_name:
+        col_name = 'col'
 
     "Initialize DataFrame"
     # Make an empty DataFrame with indices that allow for accessing groups
@@ -42,14 +52,14 @@ def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matri
                 idxs[name].append(idx)
                 x += 1
 
-    col_idx = pd.MultiIndex.from_tuples(idxs['col'], names=['col_group', 'col'])
-    row_idx = pd.MultiIndex.from_tuples(idxs['row'], names=['row_group', 'row'])
+    col_idx = pd.MultiIndex.from_tuples(idxs['col'], names=[col_group_name, col_name])
+    row_idx = pd.MultiIndex.from_tuples(idxs['row'], names=[row_group_name, row_name])
 
     M = pd.DataFrame(np.zeros((n_rows, n_cols)), row_idx, col_idx)
     
     "Apply grouping structure"
-    col_groups = col_idx.get_level_values('col_group').unique()
-    row_groups = row_idx.get_level_values('row_group').unique()
+    col_groups = col_idx.get_level_values(col_group_name).unique()
+    row_groups = row_idx.get_level_values(row_group_name).unique()
     row_groups_to_col_groups = dict(zip(row_groups, [col_groups[a] for a in association_matrix]))
     
     # Apply group sparsity and noise for each row-col group pairing
