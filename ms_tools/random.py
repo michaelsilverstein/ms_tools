@@ -16,6 +16,7 @@ def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matri
             Default = 0.5
         noise (float): The probability of non-group entries.
             Default = 0.
+        {row, col}{_group}_name (str): Name of group and individual row and column entries.
         
     Returns:
         x (array): A structured binary matrix
