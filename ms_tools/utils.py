@@ -1,6 +1,7 @@
 "Utility functions"
 
 import pandas as pd
+import scipy.stats as sps
 
 def check_len_n(obj, attr, n):
     "Check that `attr` from `obj` has length of n"
@@ -16,3 +17,37 @@ def check_n_sheets(filepath, n):
     if n_sheets != n:
         raise ValueError(f'Excel file "{filepath}" must contain {n} sheets.')
     return True
+
+def zscore(x, pop_mean, pop_std, alternative='two-sided'):
+    """
+    Calculate the z-score and p-value for a point x being drawn from a normal distribution
+    
+    Inputs:
+    | x: Sample to test
+    | pop_mean: Population mean
+    | pop_std: Population standard deviation
+    | alternative: Hypothesis test
+        * 'two-sided': Two-tailed test
+        * 'less': Left-tailed test
+        * 'greater': Right-tailed test
+        
+    Returns:
+    | p: p-value given alternative hypothesis
+    | z: z-score
+    """
+    if alternative not in ('two-sided', 'less', 'greater'):
+        raise KeyError('"alternative" must be "two-sided", "less", or "greater"')
+    
+    # Compute cdf
+    cdf = sps.norm(pop_mean, pop_std).cdf(x)
+    # Compute z-score
+    z = sps.norm.ppf(cdf)
+    # Compute p-value
+    if alternative == 'less':
+        p = cdf
+    elif alternative == 'two-sided':
+        p = 2 * sps.norm.sf(abs(z))
+    elif alternative == 'greater':
+        p = 1 - cdf
+    
+    return p, z
