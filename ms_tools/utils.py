@@ -2,6 +2,7 @@
 
 import pandas as pd
 import scipy.stats as sps
+import numpy as np
 
 def check_len_n(obj, attr, n):
     "Check that `attr` from `obj` has length of n"
@@ -51,3 +52,32 @@ def zscore(x, pop_mean, pop_std, alternative='two-sided'):
         p = 1 - cdf
     
     return p, z
+
+def rarefy_present(df, n, axis=0):
+    """Subsample `n` existing (True or > 0) entries from a DataFrame or array `df`.
+    This will turn entries to "False" - it will not remove them from the object.
+
+    Args:
+        df (DataFrame or array): A DataFrame to subsample from
+        n (int): Number of entries to subsample
+        axis (int): DataFrame axis to subsample 
+    """
+    # Note of original input type
+    initial_type = type(df)
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(df)
+    
+    # Find present indices
+    pres_idx = df.any(axis=axis).pipe(lambda x: x[x]).index
+    
+    # Select entries to remove
+    to_remove = np.random.choice(range(pres_idx.size), n, False)
+    
+    # Remove entries 
+    df.loc[pres_idx[to_remove]] = False
+    
+    # Convert back to original
+    df = initial_type(df)
+    
+    return df
