@@ -66,7 +66,7 @@ def rarefy_present(df, n, axis=0):
     initial_type = type(df)
     
     # Convert to DataFrame
-    df = pd.DataFrame(df)
+    df = pd.DataFrame(df).copy()
     
     # Find present indices
     pres_idx = df.any(axis=axis).pipe(lambda x: x[x]).index
