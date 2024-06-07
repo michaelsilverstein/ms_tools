@@ -70,7 +70,7 @@ def stackedbarplot(data, stack_order=None, palette=None, **barplot_kws):
     # Compute cumsum
     cumsum = data.loc[stack_order].cumsum()
     # Melt for passing to seaborn
-    cumsum_stacked = cumsum.stack().reset_index(names='count')
+    cumsum_stacked = cumsum.stack().reset_index(name='count')
     # Get name of variable to stack and sample
     stack_name, sample_name = cumsum_stacked.columns[:2]
     
