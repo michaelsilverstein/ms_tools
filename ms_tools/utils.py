@@ -71,8 +71,12 @@ def rarefy_present(df, n, axis=0):
     # Find present indices
     pres_idx = df.any(axis=axis).pipe(lambda x: x[x]).index
     
+    # Number of indices to remove
+    n_idx_pres = pres_idx.size
+    n_to_remove = n_idx_pres - n
+    
     # Select entries to remove
-    to_remove = np.random.choice(range(pres_idx.size), n, False)
+    to_remove = np.random.choice(range(n_idx_pres), n_to_remove, False)
     
     # Remove entries 
     df.loc[pres_idx[to_remove]] = False
