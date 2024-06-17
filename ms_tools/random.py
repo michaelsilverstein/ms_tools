@@ -106,6 +106,6 @@ def shuffle_rows(x, frac=None, n=None):
     
     # Swap positions of selected entries
     new_positions = np.random.permutation(entries_to_shuffle)
-    x[new_positions] = entries_to_shuffle
+    x[new_positions] = x[entries_to_shuffle]
     
     return x
