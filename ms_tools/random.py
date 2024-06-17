@@ -71,3 +71,41 @@ def structured_binary_matrix(row_group_sizes, col_group_sizes, association_matri
     x = np.random.rand(n_rows, n_cols) < M
     
     return x
+
+def shuffle_rows(x, frac=None, n=None):
+    """Shuffle a specified fraction or number of rows in `x` and return a new array. Unshuffled rows of x
+    will remain in place.
+
+    Args:
+        x (array): Array to shuffle. Only the first axis of `x` will be shuffled.
+        frac (float): Fraction of entries to shuffle. * 
+        n (int): Number of entries to shuffle.  *
+        
+    * Only `frac` or `n` can be provided.
+    """
+    
+    frac_provided = frac is not None
+    n_provided = n is not None
+    
+    if frac_provided and n_provided:
+        raise ValueError('Only `frac` or `n` can be supplied.')
+    
+    x = x.copy()
+    
+    # Number of rows in x
+    n_entries = x.shape[0]
+    
+    # Number of entries to shuffle
+    if frac_provided:
+        n_to_shuffle = np.ceil(frac * n_entries).astype(int)
+    else:
+        n_to_shuffle = n
+    
+    # Entries to shuffle
+    entries_to_shuffle = np.random.choice(n_entries, n_to_shuffle, replace=False)
+    
+    # Swap positions of selected entries
+    new_positions = np.random.permutation(entries_to_shuffle)
+    x[new_positions] = entries_to_shuffle
+    
+    return x
