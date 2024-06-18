@@ -85,3 +85,18 @@ def rarefy_present(df, n, axis=0):
     df = initial_type(df)
     
     return df
+
+def interpolate_fraction(x, y, t):
+    """Interperolate a fraction `t` between two vectors
+
+    Args:
+        x (array): A vector of size n
+        y (arrray): A vector of size n
+        t (float): Fraction between `x` and `y`
+            t = 0: x
+            t = 1: y
+    """
+    
+    interp = (1 - t) * np.array(x) + t * y
+    
+    return interp
