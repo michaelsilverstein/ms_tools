@@ -97,6 +97,6 @@ def interpolate_fraction(x, y, t):
             t = 1: y
     """
     
-    interp = (1 - t) * np.array(x) + t * y
+    interp = (1 - t) * np.array(x) + t * np.array(y)
     
     return interp
